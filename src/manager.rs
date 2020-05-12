@@ -1,14 +1,19 @@
 use crate::asset::{Asset, AssetHandle};
 use futures::{stream::{FuturesUnordered, StreamExt}};
 use slab::Slab;
-use std::{collections::HashSet, path::PathBuf, sync::Arc};
+use std::{collections::HashSet, sync::Arc};
+use crossbeam::{Sender, Receiver, SendError};
+use std::path::PathBuf;
+
 /// Manages the loading and unloading of one struct that implements the Asset trait.
 /// Regular calls to maintain support lazy loading, auto unload(optional default:off) and auto drop(optional default:off).
 #[derive(Clone)]
 pub struct Manager<A: Asset> {
     min_ref_drop: bool,
     min_ref_unload: bool,
-    assets_to_load: Vec<usize>,
+    loader_id: usize,
+    load_send: Sender<(usize,PathBuf)>,
+    load_recv: Receiver<Vec<u8>>,
     asset_paths: HashSet<PathBuf>,
     asset_handles: Slab<AssetHandle<A>>,
 }
@@ -18,28 +23,20 @@ impl<A: Asset> Manager<A> {
     ///
     /// The function does not allocate and the returned Managers main storage will have no
     /// capacity until `insert` is called.
-    pub fn new() -> Self {
+    pub(crate) fn new(loader_id:usize,load_send:Sender<(usize,PathBuf)>,load_recv:Receiver<Vec<u8>>) -> Self {
         Self {
             min_ref_drop: false,
             min_ref_unload: false,
-            assets_to_load: Vec::new(),
+            loader_id,
+            load_send,
+            load_recv,
             asset_paths: HashSet::new(),
             asset_handles: Slab::new(),
         }
     }
-    /// Construct a new, empty `Manager` with the specified capacity.
-    ///
-    /// The returned Manager will be able to store exactly `capacity` without
-    /// reallocating its main storage. If `capacity` is 0, the Manager will not allocate.
-    ///
-    pub fn with_capacity(capacity: usize) -> Self {
-        Self {
-            min_ref_drop: false,
-            min_ref_unload: false,
-            assets_to_load: Vec::new(),
-            asset_paths: HashSet::with_capacity(capacity),
-            asset_handles: Slab::with_capacity(capacity),
-        }
+    
+    pub fn capacity(mut self) -> usize{
+        self.asset_handles.capacity()
     }
     /// Set the `min_ref_drop` of the Manager.
     ///
@@ -94,15 +91,18 @@ impl<A: Asset> Manager<A> {
     /// If there is no valid file found at the specified path it will return an io::Error.
     /// If the key is not found it will return None.
     ///
-    pub async fn load(&mut self, key: usize) -> Option<Result<Arc<A>, std::io::Error>> {
+    pub async fn load_blocking(&mut self, key: usize) -> Option<Result<Arc<A>, std::io::Error>> {
         Some(self.asset_handles.get_mut(key)?.load().await)
     }
     /// Marks an unloaded Asset known to the the Manager as should_load.
     ///
     /// In next call to maintenance it will be attempted to load the Asset.
     ///
-    pub fn load_lazy(&mut self, key: usize) {
-        self.assets_to_load.push(key);
+    pub fn load(&mut self, key: usize) -> Result<(), SendError<(usize,PathBuf)>> {
+        if let Some(handle) = self.asset_handles.get(key){
+            self.load_send.send((key, handle.path.clone()))?;
+        }
+        Ok(())
     }
     /// Unloads an Asset known to the the Manager. The Asset can be reloaded with the same key.
     ///
@@ -146,47 +146,55 @@ impl<A: Asset> Manager<A> {
     /// Will be slow if used with a large initial capacity + min_drop + min_unload as it will iterate over every Asset.
     ///
     pub async fn maintain(&mut self) {
-        if self.min_ref_drop || self.min_ref_unload {
-            let mut keys_to_drop = Vec::new();
-            for (key, handle) in self.asset_handles.iter_mut() {
-                if let Some(arc) = handle.get() {
-                    if self.min_ref_unload && Arc::strong_count(&arc) == 1 {
-                        handle.unload();
-                    }
-                }
-                if self.min_ref_drop && handle.get().is_none() {
-                    if !self.assets_to_load.contains(&key) {
-                        self.asset_paths.remove(&handle.path);
-                        keys_to_drop.push(key);
-                    }
-                }
-            }
-            for key in keys_to_drop {
-                self.drop(key);
-            }
-        }
-
-        let mut loaded = Vec::new();
-        {
-            let mut futures = FuturesUnordered::new();
-            for key in self.assets_to_load.as_slice() {
-                futures.push(self.load_unloaded_raw(*key));
-            }
-            while let Some(Some((key, asset))) = futures.next().await {
-                if asset.is_ok() {
-                    loaded.push((key, asset.unwrap()));
-                }
-            }
-        }
-        for (key, asset) in loaded {
-            self.set_raw(key, asset);
-        }
-        self.assets_to_load.clear();
+        //if self.min_ref_drop || self.min_ref_unload {
+        //    let mut keys_to_drop = Vec::new();
+        //    for (key, handle) in self.asset_handles.iter_mut() {
+        //        if let Some(arc) = handle.get() {
+        //            if self.min_ref_unload && Arc::strong_count(&arc) == 1 {
+        //                handle.unload();
+        //            }
+        //        }
+        //        if self.min_ref_drop && handle.get().is_none() {
+        //            if !self.assets_to_load.contains(&key) {
+        //                self.asset_paths.remove(&handle.path);
+        //                keys_to_drop.push(key);
+        //            }
+        //        }
+        //    }
+        //    for key in keys_to_drop {
+        //        self.drop(key);
+        //    }
+        //}
+//
+        //let mut loaded = Vec::new();
+        //{
+        //    let mut futures = FuturesUnordered::new();
+        //    for key in self.assets_to_load.as_slice() {
+        //        futures.push(self.load_unloaded_raw(*key));
+        //    }
+        //    while let Some(Some((key, asset))) = futures.next().await {
+        //        if asset.is_ok() {
+        //            loaded.push((key, asset.unwrap()));
+        //        }
+        //    }
+        //}
+        //for (key, asset) in loaded {
+        //    self.set_raw(key, asset);
+        //}
+        //self.assets_to_load.clear();
     }
     pub fn strong_count(&self, key: usize) -> Option<usize> {
         Some(Arc::strong_count(self.asset_handles.get(key)?.get()?))
     }
 }
+
+impl<A:Asset> Iterator for Manager<A>{
+    type Item = Option<Arc<A>>;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.asset_handles.iter().next().map(|(_,a)|a.get().map(|a|a.clone()))
+    }
+}
+
 pub async fn batch_maintain<T>(maintain_fns: Vec<&mut Manager<T>>)
 where
     T: Asset

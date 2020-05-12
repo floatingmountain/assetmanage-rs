@@ -1,7 +1,7 @@
 use super::*;
 use serde::Deserialize;
 use std::{io::ErrorKind};
-use async_trait::async_trait;
+
 use async_std::{task, path::Path};
 
 /// TestStruct demonstrates implementing Asset
@@ -10,14 +10,14 @@ struct TestStruct {
     _s: String,
 }
 
-#[async_trait]
-impl Asset for TestStruct {
-     async fn load<P: AsRef<Path> + Send>(path: P) -> Result<Self, std::io::Error> {
-        let b = async_std::fs::read(path).await?;
-        ron::de::from_bytes::<TestStruct>(&b)
-            .map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))
-    }
-}
+//impl Asset for TestStruct {
+////     fn load<P: AsRef<Path> + Send>(path: P) -> Result<Self, std::io::Error> {
+////        let b = async_std::fs::read(path).await?;
+////        ron::de::from_bytes::<TestStruct>(&b)
+////            .map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))
+////    }
+//todo!()
+//}
 
 #[test]
 ///Demonstrates and tests the use of Manager
