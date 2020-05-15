@@ -2,10 +2,11 @@ use crate::{Asset, Manager, loader::Loader};
 use std::path::PathBuf;
 use crossbeam::{unbounded, Receiver, Sender};
 use slab::Slab;
+
 pub struct Builder {
-    to_load_send: Sender<(usize, PathBuf)>,
-    to_load_recv: Receiver<(usize, PathBuf)>,
-    loaded: Slab<Sender<Vec<u8>>>,
+    to_load_send: Sender<(usize, usize, PathBuf)>,
+    to_load_recv: Receiver<(usize, usize, PathBuf)>,
+    loaded: Slab<Sender<(usize, Vec<u8>)>>,
 }
 
 impl Builder {
