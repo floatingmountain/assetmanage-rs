@@ -105,18 +105,12 @@ impl<A: Asset> Manager<A> {
     /// In next call to maintenance it will be attempted to load the Asset.
     ///
     pub fn load(&mut self, key: usize) -> Result<(), Box<dyn Error>> {
-        Ok(self.load_send.send((
-            self.loader_id,
-            key,
-            self.asset_handles
-                .get(key)
-                .ok_or(std::io::Error::new(
-                    ErrorKind::NotFound,
-                    format!("Key {} not found", key),
-                ))?
-                .path
-                .clone(),
-        ))?)
+        let mut a = self.asset_handles.get_mut(key).ok_or(std::io::Error::new(
+            ErrorKind::NotFound,
+            format!("Key {} not found", key),
+        ))?;
+        a.status = LoadStatus::Loading;
+        Ok(self.load_send.send((self.loader_id, key, a.path.clone()))?)
     }
     /// Unloads an Asset known to the the Manager. The Asset can be reloaded with the same key.
     ///

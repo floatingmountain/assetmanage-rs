@@ -74,7 +74,7 @@ fn it_works() {
         let key = manager3.insert(path_to_testfile.clone());
         assert!(manager3.get(key).is_none()); //Asset not loaded
         manager3.maintain();
-        assert!(manager3.load(key).is_err()); //It was instantly dropped during maintain. Cant be loaded
+        assert!(manager3.load(key).is_err()); //It was dropped during maintain. Cant be loaded
         let new_key = manager3.insert(path_to_testfile.clone());
         assert!(key == new_key); //dropped Key is being reused
         assert!(manager3.get(key).is_none()); //Asset not loaded
