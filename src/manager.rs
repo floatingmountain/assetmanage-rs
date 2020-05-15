@@ -3,10 +3,9 @@ use crate::{
     loader::LoadStatus,
 };
 use crossbeam::{Receiver, SendError, Sender};
-use futures::stream::{FuturesUnordered, StreamExt};
 use slab::Slab;
 use std::path::PathBuf;
-use std::{collections::HashSet, sync::Arc};
+use std::{collections::HashSet, error::Error, io::ErrorKind, sync::Arc};
 
 /// Manages the loading and unloading of one struct that implements the Asset trait.
 /// Regular calls to maintain support lazy loading, auto unload(optional default:off) and auto drop(optional default:off).
@@ -16,7 +15,7 @@ pub struct Manager<A: Asset> {
     min_ref_unload: bool,
     loader_id: usize,
     load_send: Sender<(usize, usize, PathBuf)>,
-    load_recv: Receiver<(usize,Vec<u8>)>,
+    load_recv: Receiver<(usize, Vec<u8>)>,
     asset_paths: HashSet<PathBuf>,
     asset_handles: Slab<AssetHandle<A>>,
 }
@@ -105,11 +104,19 @@ impl<A: Asset> Manager<A> {
     ///
     /// In next call to maintenance it will be attempted to load the Asset.
     ///
-    pub fn load(&mut self, key: usize) -> Result<(), SendError<(usize, PathBuf)>> {
-        if let Some(handle) = self.asset_handles.get(key) {
-            self.load_send.send((self.loader_id, key, handle.path.clone()));
-        }
-        Ok(())
+    pub fn load(&mut self, key: usize) -> Result<(), Box<dyn Error>> {
+        Ok(self.load_send.send((
+            self.loader_id,
+            key,
+            self.asset_handles
+                .get(key)
+                .ok_or(std::io::Error::new(
+                    ErrorKind::NotFound,
+                    format!("Key {} not found", key),
+                ))?
+                .path
+                .clone(),
+        ))?)
     }
     /// Unloads an Asset known to the the Manager. The Asset can be reloaded with the same key.
     ///
@@ -139,7 +146,9 @@ impl<A: Asset> Manager<A> {
     pub fn get(&self, key: usize) -> Option<Arc<A>> {
         Some(self.asset_handles.get(key)?.get()?.clone())
     }
-
+    pub fn status(&self, key: usize) -> Option<LoadStatus> {
+        Some(self.asset_handles.get(key)?.status)
+    }
     /// Maintains the manager. Needs to be called for lazy loading, to unload unused Assets and maybe even drop them.
     /// The default Manager will not drop or unload any Assets. So maintain will just load Assets.
     /// Will be slow if used with a large initial capacity + min_drop + min_unload as it will iterate over every Asset.
@@ -166,7 +175,7 @@ impl<A: Asset> Manager<A> {
         }
         while let Ok((key, b)) = self.load_recv.try_recv() {
             if let Ok(a) = A::decode(&b) {
-                if let Some(handle) = self.asset_handles.get_mut(key){
+                if let Some(handle) = self.asset_handles.get_mut(key) {
                     handle.set(a)
                 }
             }
