@@ -2,7 +2,7 @@ use crate::{
     asset::{Asset, AssetHandle},
     loader::LoadStatus,
 };
-use crossbeam::{Receiver, SendError, Sender};
+use crossbeam::{Receiver, Sender};
 use slab::Slab;
 use std::path::PathBuf;
 use std::{collections::HashSet, error::Error, io::ErrorKind, sync::Arc};
@@ -41,7 +41,7 @@ impl<A: Asset> Manager<A> {
         }
     }
 
-    pub fn capacity(mut self) -> usize {
+    pub fn capacity(&self) -> usize {
         self.asset_handles.capacity()
     }
     /// Set the `min_ref_drop` of the Manager.

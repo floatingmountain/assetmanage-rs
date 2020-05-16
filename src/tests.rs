@@ -2,8 +2,6 @@ use super::*;
 use serde::Deserialize;
 use std::{time::Duration, io::ErrorKind};
 
-use async_std::{path::Path, task};
-
 /// TestStruct demonstrates implementing Asset
 #[derive(Deserialize)]
 struct TestStruct {

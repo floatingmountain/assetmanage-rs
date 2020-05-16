@@ -1,13 +1,10 @@
 use futures::{
-    stream::{FuturesUnordered, Stream, StreamExt},
-    Future,
-};
+    stream::{FuturesUnordered, StreamExt},
+    };
 use slab::Slab;
-use std::any::Any;
 use std::path::{Path, PathBuf};
 
-use crate::Asset;
-use crossbeam::{unbounded, Receiver, Sender};
+use crossbeam::{ Receiver, Sender};
 
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub enum LoadStatus {
@@ -28,7 +25,7 @@ impl Loader {
     ) -> Self {
         Self { to_load, loaded }
     }
-
+    #[allow(unused)]
     pub async fn run(mut self) {
         let mut loading = FuturesUnordered::new();
         loop {
