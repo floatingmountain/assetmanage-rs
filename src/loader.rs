@@ -30,9 +30,8 @@ impl Loader {
     }
 
     pub async fn run(mut self) {
+        let mut loading = FuturesUnordered::new();
         loop {
-            let mut loading = FuturesUnordered::new();
-
             while let Ok((key, f_key, path)) = self.to_load.try_recv() {
                 loading.push(load(key, f_key, path));
             }
