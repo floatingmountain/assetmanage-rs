@@ -12,7 +12,7 @@ pub enum LoadStatus {
     Loading,
     Loaded,
 }
-
+///Loader recieves assets to load from the associated Managers, then loads and returns them asynchronous.
 pub struct Loader {
     to_load: Receiver<(usize, usize, PathBuf)>,
     loaded: Slab<Sender<(usize, Vec<u8>)>>,
@@ -25,6 +25,17 @@ impl Loader {
     ) -> Self {
         Self { to_load, loaded }
     }
+    /// run the async load loop
+    ///    
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut builder = builder::Builder::new();
+    /// [...]
+    /// let loader = builder.finish_loader();
+    /// async_std::task::spawn(loader.run());
+    /// ```
     #[allow(unused)]
     pub async fn run(mut self) {
         let mut loading = FuturesUnordered::new();

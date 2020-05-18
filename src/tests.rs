@@ -106,3 +106,34 @@ fn it_works() {
         drop(manager4);
     }
 }
+
+#[test]
+fn test_load_get(){
+    let path_to_testfile = std::env::current_dir()
+        .unwrap()
+        .join("assets/TestAsset.ron");
+    let path_to_testfilecopy = std::env::current_dir()
+        .unwrap()
+        .join("assets/TestAssetCopy.ron");
+    let mut builder = builder::Builder::new();
+    let mut manager = builder.create_manager::<TestStruct>();
+    let loader = builder.finish_loader();
+    async_std::task::spawn(loader.run());
+    
+    let key = manager.insert(path_to_testfile.clone());
+    let key_c = manager.insert(path_to_testfilecopy.clone());
+    manager.load(key).unwrap();
+    manager.load(key_c).unwrap();
+    let s1 = manager.get_blocking(key).unwrap();
+    let s2 = manager.get_blocking(key_c).unwrap();
+    assert!(s1._s.eq(&String::from("12341234")));
+    assert!(s2._s.eq(&String::from("123412345")));
+    let s2 = manager.get_blocking(key_c).unwrap();
+    let s1 = manager.get_blocking(key).unwrap();
+    assert!(s1._s.eq(&String::from("12341234")));
+    assert!(s2._s.eq(&String::from("123412345")));
+    let s2 = manager.get(key_c).unwrap();
+    let s1 = manager.get(key).unwrap();
+    assert!(s1._s.eq(&String::from("12341234")));
+    assert!(s2._s.eq(&String::from("123412345")));
+}

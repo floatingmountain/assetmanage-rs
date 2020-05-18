@@ -1,7 +1,7 @@
 use std::{sync::Arc, path::PathBuf,};
 use crate::loader::LoadStatus;
 
-/// Any struct implementing this Asset can be Stored inside the Manager
+/// Any struct implementing the `Asset` trait can be Stored inside a corresponding `Manager`
 pub trait Asset
 where
     Self: Sized,
@@ -9,6 +9,7 @@ where
     fn decode(bytes: &[u8]) -> Result<Self, std::io::Error>;
 }
 
+/// `AssetHandle` holds the Asset and its Metadata
 #[derive(Clone)]
 pub(crate) struct AssetHandle<A> 
 where A: Asset
