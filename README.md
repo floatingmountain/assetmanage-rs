@@ -1,2 +1,2 @@
 # assetmanage-rs
-Storing and async loading assets with unique keys
+async loading assets from a sync context + storage via unique keys 
