@@ -136,10 +136,55 @@ impl<A: Asset> Manager<A> {
     ///
     /// If the key is not found it will return None.
     /// If the Asset is not loaded it will return None.
+    /// Call status() to get detailed information.
     ///
     pub fn get(&self, key: usize) -> Option<Arc<A>> {
         Some(self.asset_handles.get(key)?.get()?.clone())
     }
+    /// Returns an Asset known to the the Manager.
+    ///
+    /// If the key is not found it will return None.
+    /// If the Asset is not loading it will return None.
+    /// Will poll the loader until the asset is available and then returning it.
+    ///
+    pub fn get_blocking(&mut self, key: usize) -> Option<Arc<A>> {
+        match self.asset_handles.get(key)?.get() {
+            None => {
+                if self.asset_handles.get(key)?.status.eq(&LoadStatus::Loading) {
+                    while let Ok((k, b)) = self.load_recv.recv() {
+                        if let Ok(a) = A::decode(&b) {
+                            if let Some(handle) = self.asset_handles.get_mut(k) {
+                                handle.set(a);
+                                if key == k {
+                                    return Some(handle.get()?.clone());
+                                }
+                            }
+                        }
+                    }
+                }
+                None
+            }
+            Some(a) => Some(a.clone()),
+        }
+    }
+    /// Returns an Asset known to the the Manager.
+    ///
+    /// If a key is not found the Option will be None.
+    /// If the Asset is not loading the Option will be None.
+    /// Will poll the loader until all assets are available and then returning them.
+    /// Order will be perserved.
+    ///
+    pub fn get_blocking_list(&mut self, keys: &[usize]) -> Vec<Option<Arc<A>>> {
+        let mut assets = Vec::with_capacity(keys.len());
+        for key in keys{
+            assets.push(self.get_blocking(*key))
+        }
+        assets
+    }
+    /// Returns the LoadStatus of an Asset known to the the Manager.
+    ///
+    /// If the key is not found it will return None.
+    ///
     pub fn status(&self, key: usize) -> Option<LoadStatus> {
         Some(self.asset_handles.get(key)?.status)
     }
