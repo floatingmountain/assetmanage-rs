@@ -44,34 +44,24 @@ impl<A: Asset> Manager<A> {
     pub fn capacity(&self) -> usize {
         self.asset_handles.capacity()
     }
-    /// Set the `min_ref_drop` of the Manager.
+    /// Set the `auto_dropout` of the Manager to `true`.
     ///
     /// The Manager will drop the AssetHandle on the next call of its `maintain` function
     /// if the asset is not loaded.
     ///
     /// After dropping the AssetHandle the `key` may be reused!
-    ///     
-    /// # Arguments
     ///
-    /// * `value = false` - (Default) wont ever drop the Handle
-    /// * `value = true`  - will drop the handle when value equal strong_refcount
-    ///
-    pub fn auto_dropout(mut self, value: bool) -> Self {
-        self.min_ref_drop = value;
+    pub fn auto_dropout(mut self) -> Self {
+        self.min_ref_drop = true;
         self
     }
-    /// Set the `min_ref_unload` of the Manager.
+    /// Set the `auto_unload` of the Manager to `true`.
     ///
     /// The Manager will drop its reference to the Asset on the next call of its `maintain` function
-    /// if the strong_refcount is equal to the specified `min_ref_unload`.
+    /// if its strong_refcount is equal to 1.
     ///
-    /// # Arguments
-    ///
-    /// * `value = false` - (Default) will not drop the reference to the Asset
-    /// * `value = true`  - will drop the  the reference to the Asset when value equal strong_refcount
-    ///
-    pub fn auto_unload(mut self, value: bool) -> Self {
-        self.min_ref_unload = value;
+    pub fn auto_unload(mut self) -> Self {
+        self.min_ref_unload = true;
         self
     }
     /// Insert an Assets Path into the Manager and return its key without loading the asset.
@@ -89,6 +79,25 @@ impl<A: Asset> Manager<A> {
         } else {
             self.asset_paths.insert(path.clone());
             self.asset_handles.insert(AssetHandle::new(path))
+        }
+    }
+    /// Insert an Assets Path and the loaded Asset into the Manager and return its key.
+    /// If the specified path is already known to the Manager it will return the known paths key.
+    ///
+    /// If auto_dropout is activated the Asset has to be explicitly loaded with the given key after inserting
+    /// or it will be dropped in the next call to maintain.
+    ///
+    pub fn insert_raw(&mut self, path: PathBuf, asset:A) -> usize {
+        if self.asset_paths.contains(&path) {
+            self.asset_handles
+                .iter()
+                .position(|(_, h)| h.path.eq(&path))
+                .unwrap()
+        } else {
+            self.asset_paths.insert(path.clone());
+            let mut handle = AssetHandle::new(path);
+            handle.set(asset);
+            self.asset_handles.insert(handle)
         }
     }
     ///// Loads an unloaded Asset known to the the Manager and returns its Arc<T>.

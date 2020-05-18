@@ -30,11 +30,11 @@ fn it_works() {
     //default manager
     let mut manager1 = builder.create_manager::<TestStruct>();
     //auto_unload_manager
-    let mut manager2 = builder.create_manager::<TestStruct>().auto_unload(true);
+    let mut manager2 = builder.create_manager::<TestStruct>().auto_unload();
     //auto_dropout manager
-    let mut manager3 = builder.create_manager::<TestStruct>().auto_dropout(true);
+    let mut manager3 = builder.create_manager::<TestStruct>().auto_dropout();
     //auto_unload + auto_dropout manager
-    let mut manager4 = builder.create_manager::<TestStruct>().auto_unload(true).auto_dropout(true);
+    let mut manager4 = builder.create_manager::<TestStruct>().auto_unload().auto_dropout();
     
     let loader = builder.finish_loader();
     async_std::task::spawn(loader.run());
