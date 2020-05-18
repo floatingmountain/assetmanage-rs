@@ -72,10 +72,12 @@ impl<A: Asset> Manager<A> {
     ///
     pub fn insert(&mut self, path: PathBuf) -> usize {
         if self.asset_paths.contains(&path) {
-            self.asset_handles
-                .iter()
-                .position(|(_, h)| h.path.eq(&path))
-                .unwrap()
+            for (k, h) in self.asset_handles.iter() {
+                if h.path.eq(&path) {
+                    return k;
+                }
+            }
+            panic!("Impossible to reach")
         } else {
             self.asset_paths.insert(path.clone());
             self.asset_handles.insert(AssetHandle::new(path))
@@ -87,18 +89,13 @@ impl<A: Asset> Manager<A> {
     /// If auto_dropout is activated the Asset has to be explicitly loaded with the given key after inserting
     /// or it will be dropped in the next call to maintain.
     ///
-    pub fn insert_raw(&mut self, path: PathBuf, asset:A) -> usize {
-        if self.asset_paths.contains(&path) {
-            self.asset_handles
-                .iter()
-                .position(|(_, h)| h.path.eq(&path))
-                .unwrap()
-        } else {
-            self.asset_paths.insert(path.clone());
-            let mut handle = AssetHandle::new(path);
+    pub fn insert_raw(&mut self, path: PathBuf, asset: A) -> usize {
+        let key = self.insert(path);
+        let handle = self.asset_handles.get_mut(key).unwrap();
+        if handle.status.eq(&LoadStatus::NotLoaded) {
             handle.set(asset);
-            self.asset_handles.insert(handle)
         }
+        key
     }
     ///// Loads an unloaded Asset known to the the Manager and returns its Arc<T>.
     ///// If the asset is already loaded it will just return the Asset.
@@ -185,7 +182,7 @@ impl<A: Asset> Manager<A> {
     ///
     pub fn get_blocking_list(&mut self, keys: &[usize]) -> Vec<Option<Arc<A>>> {
         let mut assets = Vec::with_capacity(keys.len());
-        for key in keys{
+        for key in keys {
             assets.push(self.get_blocking(*key))
         }
         assets
