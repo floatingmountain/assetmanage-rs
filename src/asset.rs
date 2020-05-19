@@ -11,7 +11,7 @@ where
 
 /// `AssetHandle` holds the Asset and its Metadata
 #[derive(Clone)]
-pub(crate) struct AssetHandle<A> 
+pub struct AssetHandle<A> 
 where A: Asset
 {
     pub(crate) path: PathBuf,
