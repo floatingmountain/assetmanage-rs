@@ -1,21 +1,20 @@
-use legion::prelude::*;
 use assetmanage_rs::*;
+use legion::prelude::*;
 use serde::Deserialize;
-use std::{io::ErrorKind};
-
+use std::io::ErrorKind;
 
 extern crate pretty_env_logger;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 
 /// TestStruct demonstrates implementing Asset
-#[derive(Deserialize,Debug)]
+#[derive(Deserialize, Debug)]
 struct TestStruct {
     _s: String,
 }
 
 impl Asset for TestStruct {
-    fn decode(b: &[u8]) -> Result<Self, std::io::Error>{
-        
+    fn decode(b: &[u8]) -> Result<Self, std::io::Error> {
         ron::de::from_bytes::<TestStruct>(&b)
             .map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))
     }
@@ -33,34 +32,35 @@ fn main() {
 
     let mut builder = assetmanage_rs::Builder::new();
 
-    world.resources.insert(builder.create_manager::<TestStruct>());
+    world
+        .resources
+        .insert(builder.create_manager::<TestStruct>());
     let loader = builder.finish_loader();
     async_std::task::spawn(loader.run());
-    
-    
+
     let maintain_assets = SystemBuilder::new("maintain_assets")
-    .write_resource::<Manager<TestStruct>>()
-    .build(|_,_,manager_test_struct,_|{
-        info!("maintaining");
-        manager_test_struct.maintain();
-    });
+        .write_resource::<Manager<TestStruct>>()
+        .build(|_, _, manager_test_struct, _| {
+            info!("maintaining");
+            manager_test_struct.maintain();
+        });
 
     let load_asset = SystemBuilder::new("load_asset")
-    .write_resource::<Manager<TestStruct>>()
-    .build(|_,_,manager_test_struct,_|{
-        info!("loading");
-        let path_to_testfile = std::env::current_dir()
-        .unwrap()
-        .join("assets/TestAsset.ron");
-        let key = manager_test_struct.insert(path_to_testfile);
-        manager_test_struct.load(key).expect("FML");
-    });
+        .write_resource::<Manager<TestStruct>>()
+        .build(|_, _, manager_test_struct, _| {
+            info!("loading");
+            let path_to_testfile = std::env::current_dir()
+                .unwrap()
+                .join("assets/TestAsset.ron");
+            let key = manager_test_struct.insert(path_to_testfile);
+            manager_test_struct.load(key).expect("FML");
+        });
 
     let getasset = SystemBuilder::new("getasset")
-    .write_resource::<Manager<TestStruct>>()
-    .build(|_,_,manager_test_struct,_|{
-        info!("{:?}",manager_test_struct.get(0));
-    });
+        .write_resource::<Manager<TestStruct>>()
+        .build(|_, _, manager_test_struct, _| {
+            info!("{:?}", manager_test_struct.get(0));
+        });
 
     let mut schedule = Schedule::builder()
         .add_system(maintain_assets)
@@ -68,6 +68,8 @@ fn main() {
         .add_system(getasset)
         .flush()
         .build();
-    
-    loop{schedule.execute(&mut world);}
+
+    loop {
+        schedule.execute(&mut world);
+    }
 }

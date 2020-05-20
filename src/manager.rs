@@ -1,21 +1,20 @@
 use crate::{
     asset::{Asset, AssetHandle},
-    loader::LoadStatus,
+    loader::{LoadPacket, LoadStatus},
 };
-use crossbeam::{Receiver, Sender};
 use slab::Slab;
 use std::path::PathBuf;
 use std::{collections::HashSet, error::Error, io::ErrorKind, sync::Arc};
+use futures::channel::mpsc::{ UnboundedReceiver, UnboundedSender};
 
 /// Manages the loading and unloading of one struct that implements the Asset trait.
 /// Regular calls to maintain support lazy loading, auto unload(optional default:off) and auto drop(optional default:off).
-#[derive(Clone)]
 pub struct Manager<A: Asset> {
-    min_ref_drop: bool,
-    min_ref_unload: bool,
+    drop: bool,
+    unload: bool,
     loader_id: usize,
-    load_send: Sender<(usize, usize, PathBuf)>,
-    load_recv: Receiver<(usize, Vec<u8>)>,
+    load_send: UnboundedSender<LoadPacket>,
+    load_recv: UnboundedReceiver<(usize, Vec<u8>)>,
     asset_paths: HashSet<PathBuf>,
     asset_handles: Slab<AssetHandle<A>>,
 }
@@ -27,12 +26,12 @@ impl<A: Asset> Manager<A> {
     /// capacity until `insert` is called.
     pub(crate) fn new(
         loader_id: usize,
-        load_send: Sender<(usize, usize, PathBuf)>,
-        load_recv: Receiver<(usize, Vec<u8>)>,
+        load_send: UnboundedSender<LoadPacket>,
+        load_recv: UnboundedReceiver<(usize, Vec<u8>)>,
     ) -> Self {
         Self {
-            min_ref_drop: false,
-            min_ref_unload: false,
+            drop: false,
+            unload: false,
             loader_id,
             load_send,
             load_recv,
@@ -52,7 +51,7 @@ impl<A: Asset> Manager<A> {
     /// After dropping the AssetHandle the `key` may be reused!
     ///
     pub fn auto_dropout(mut self) -> Self {
-        self.min_ref_drop = true;
+        self.drop = true;
         self
     }
     /// Set the `auto_unload` of the Manager to `true`.
@@ -61,7 +60,7 @@ impl<A: Asset> Manager<A> {
     /// if its strong_refcount is equal to 1.
     ///
     pub fn auto_unload(mut self) -> Self {
-        self.min_ref_unload = true;
+        self.unload = true;
         self
     }
     /// Insert an Assets Path into the Manager and return its key without loading the asset.
@@ -97,18 +96,11 @@ impl<A: Asset> Manager<A> {
         }
         key
     }
-    ///// Loads an unloaded Asset known to the the Manager and returns its Arc<T>.
-    ///// If the asset is already loaded it will just return the Asset.
-    /////
-    ///// If there is no valid file found at the specified path it will return an io::Error.
-    ///// If the key is not found it will return None.
-    /////
-    //pub async fn load_blocking(&mut self, key: usize) -> Option<Result<Arc<A>, std::io::Error>> {
-    //    Some(self.asset_handles.get_mut(key)?.load().await)
-    //}
-    /// Marks an unloaded Asset known to the the Manager as should_load.
+    /// Loads an unloaded Asset known to the the Manager and returns its Arc<T>.
+    /// If the asset is already loaded it will just return the Asset.
     ///
-    /// In next call to maintenance it will be attempted to load the Asset.
+    /// If there is no valid file found at the specified path it will return an io::Error.
+    /// If the key is not found it will return None.
     ///
     pub fn load(&mut self, key: usize) -> Result<(), Box<dyn Error>> {
         let mut a = self.asset_handles.get_mut(key).ok_or(std::io::Error::new(
@@ -116,7 +108,7 @@ impl<A: Asset> Manager<A> {
             format!("Key {} not found", key),
         ))?;
         a.status = LoadStatus::Loading;
-        Ok(self.load_send.send((self.loader_id, key, a.path.clone()))?)
+        Ok(self.load_send.unbounded_send(LoadPacket::new(self.loader_id, key, a.path.clone()))?)
     }
     /// Unloads an Asset known to the the Manager. The Asset can be reloaded with the same key.
     ///
@@ -151,13 +143,13 @@ impl<A: Asset> Manager<A> {
     ///
     /// If the key is not found it will return None.
     /// If the Asset is not loading it will return None.
-    /// Will poll the loader until the asset is available and then returning it.
+    /// Will wait for the Asset to become available on the receiver and then returning it.
     ///
     pub fn get_blocking(&mut self, key: usize) -> Option<Arc<A>> {
         match self.asset_handles.get(key)?.get() {
             None => {
                 if self.asset_handles.get(key)?.status.eq(&LoadStatus::Loading) {
-                    while let Ok((k, b)) = self.load_recv.recv() {
+                    while let Ok(Some((k, b))) = self.load_recv.try_next() {
                         if let Ok(a) = A::decode(&b) {
                             if let Some(handle) = self.asset_handles.get_mut(k) {
                                 handle.set(a);
@@ -173,20 +165,6 @@ impl<A: Asset> Manager<A> {
             Some(a) => Some(a.clone()),
         }
     }
-    /// Returns an Asset known to the the Manager.
-    ///
-    /// If a key is not found the Option will be None.
-    /// If the Asset is not loading the Option will be None.
-    /// Will poll the loader until all assets are available and then returning them.
-    /// Order will be perserved.
-    ///
-    pub fn get_blocking_list(&mut self, keys: &[usize]) -> Vec<Option<Arc<A>>> {
-        let mut assets = Vec::with_capacity(keys.len());
-        for key in keys {
-            assets.push(self.get_blocking(*key))
-        }
-        assets
-    }
     /// Returns the LoadStatus of an Asset known to the the Manager.
     ///
     /// If the key is not found it will return None.
@@ -199,17 +177,21 @@ impl<A: Asset> Manager<A> {
     /// Will be slow if used with a large initial capacity + min_drop + min_unload as it will iterate over every Asset.
     ///
     pub fn maintain(&mut self) {
-        if self.min_ref_drop || self.min_ref_unload {
-            let mut keys_to_drop = Vec::new();
-            for (key, handle) in self.asset_handles.iter_mut() {
+        if self.unload {
+            for (_, handle) in self.asset_handles.iter_mut() {
                 if handle.status == LoadStatus::Loaded {
                     if let Some(arc) = handle.get() {
-                        if self.min_ref_unload && Arc::strong_count(&arc) == 1 {
+                        if self.unload && Arc::strong_count(&arc) == 1 {
                             handle.unload();
                         }
                     }
                 }
-                if self.min_ref_drop && handle.status != LoadStatus::Loading {
+            }
+        }
+        if self.drop {
+            let mut keys_to_drop = Vec::new();
+            for (key, handle) in self.asset_handles.iter_mut() {
+                if self.drop && handle.status != LoadStatus::Loading {
                     self.asset_paths.remove(&handle.path);
                     keys_to_drop.push(key);
                 }
@@ -218,7 +200,7 @@ impl<A: Asset> Manager<A> {
                 self.drop(key);
             }
         }
-        while let Ok((key, b)) = self.load_recv.try_recv() {
+        while let Ok(Some((key, b))) = self.load_recv.try_next() {
             if let Ok(a) = A::decode(&b) {
                 if let Some(handle) = self.asset_handles.get_mut(key) {
                     handle.set(a)

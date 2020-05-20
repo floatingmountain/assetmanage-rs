@@ -1,15 +1,14 @@
-use crate::{Asset, Manager, loader::Loader};
-use std::path::PathBuf;
-use crossbeam::{unbounded, Receiver, Sender};
+use crate::{loader::{LoadPacket, Loader}, Asset, Manager};
+use futures::channel::mpsc::{ UnboundedReceiver, UnboundedSender, unbounded};
 use slab::Slab;
 
 /// Builder is used to Build Managers with a loading backend.
-/// construct a Builder, create Managers and finish by returning a loader. 
+/// construct a Builder, create Managers and finish by returning a loader.
 #[allow(unused)]
 pub struct Builder {
-    to_load_send: Sender<(usize, usize, PathBuf)>,
-    to_load_recv: Receiver<(usize, usize, PathBuf)>,
-    loaded: Slab<Sender<(usize, Vec<u8>)>>,
+    to_load_send: UnboundedSender<LoadPacket>,
+    to_load_recv: UnboundedReceiver<LoadPacket>,
+    loaded: Slab<UnboundedSender<(usize, Vec<u8>)>>,
 }
 
 impl Builder {
@@ -38,10 +37,10 @@ impl Builder {
         let loader_id = self.loaded.insert(s);
         Manager::new(loader_id, self.to_load_send.clone(), r)
     }
-    
+
     /// Create the `Loader` associated with `Managers` built by this `Builder`.
     #[allow(unused)]
-    pub fn finish_loader(self) -> Loader{
+    pub fn finish_loader(self) -> Loader {
         Loader::new(self.to_load_recv, self.loaded)
     }
 }
