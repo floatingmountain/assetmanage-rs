@@ -1,8 +1,8 @@
-use futures::{stream::{FuturesUnordered, StreamExt}};
+use futures::stream::{FuturesUnordered, StreamExt};
 use slab::Slab;
-use std::path::PathBuf;
-use std::sync::mpsc::{Receiver,Sender};
 use std::io::Read;
+use std::path::PathBuf;
+use std::sync::mpsc::{Receiver, Sender};
 
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub enum LoadStatus {
@@ -11,17 +11,21 @@ pub enum LoadStatus {
     Loaded,
 }
 
-pub(crate) struct LoadPacket{
+pub(crate) struct LoadPacket {
     manager_idx: usize,
     asset_key: usize,
     asset_path: PathBuf,
 }
 
 impl LoadPacket {
-    pub(crate) fn new(manager_idx: usize, asset_key: usize, asset_path: PathBuf) -> Self { Self { manager_idx, asset_key, asset_path } }
+    pub(crate) fn new(manager_idx: usize, asset_key: usize, asset_path: PathBuf) -> Self {
+        Self {
+            manager_idx,
+            asset_key,
+            asset_path,
+        }
+    }
 }
-
-
 
 ///Loader recieves assets to load from the associated Managers, then loads and returns them asynchronous.
 pub struct Loader {
@@ -41,10 +45,10 @@ impl Loader {
     pub async fn run(mut self) {
         let mut loading = FuturesUnordered::new();
         loop {
-            while let Ok(packet) = self.to_load.try_recv(){
+            while let Ok(packet) = self.to_load.try_recv() {
                 loading.push(load(packet));
             }
-            if let Some(Ok((manager_idx, asset_key,bytes))) = loading.next().await {
+            if let Some(Ok((manager_idx, asset_key, bytes))) = loading.next().await {
                 if let Some(sender) = self.loaded.get_mut(manager_idx) {
                     if sender.send((asset_key, bytes)).is_err() {}
                 }
@@ -54,9 +58,7 @@ impl Loader {
 }
 
 // https://async.rs/blog/stop-worrying-about-blocking-the-new-async-std-runtime/
-async fn load(
-    packet: LoadPacket
-) -> std::io::Result<(usize, usize, Vec<u8>)> {
+async fn load(packet: LoadPacket) -> std::io::Result<(usize, usize, Vec<u8>)> {
     let mut file = std::fs::File::open(packet.asset_path)?;
     let mut contents = vec![];
     file.read_to_end(&mut contents)?;

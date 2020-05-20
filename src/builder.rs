@@ -1,6 +1,9 @@
-use crate::{loader::{LoadPacket, Loader}, Asset, Manager};
-use std::sync::mpsc::{channel,Receiver,Sender};
+use crate::{
+    loader::{LoadPacket, Loader},
+    Asset, Manager,
+};
 use slab::Slab;
+use std::sync::mpsc::{channel, Receiver, Sender};
 
 /// Builder is used to Build Managers with a loading backend.
 /// construct a Builder, create Managers and finish by returning a loader.
