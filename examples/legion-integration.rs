@@ -1,7 +1,7 @@
 use assetmanage_rs::*;
 use legion::prelude::*;
 use serde::Deserialize;
-use std::io::ErrorKind;
+use std::{path::PathBuf, io::ErrorKind};
 
 extern crate pretty_env_logger;
 #[macro_use]
@@ -14,7 +14,7 @@ struct TestStruct {
 }
 
 impl Asset for TestStruct {
-    fn decode(b: &[u8]) -> Result<Self, std::io::Error> {
+    fn decode(_path: &PathBuf, b: &[u8]) -> Result<Self, std::io::Error> {
         ron::de::from_bytes::<TestStruct>(&b)
             .map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))
     }

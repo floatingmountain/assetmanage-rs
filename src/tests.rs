@@ -1,7 +1,7 @@
 use super::*;
 use loader::LoadStatus;
 use serde::Deserialize;
-use std::{io::ErrorKind, time::Duration};
+use std::{io::ErrorKind, time::Duration, path::PathBuf};
 
 /// TestStruct demonstrates implementing Asset
 #[derive(Deserialize)]
@@ -10,7 +10,7 @@ struct TestStruct {
 }
 
 impl Asset for TestStruct {
-    fn decode(b: &[u8]) -> Result<Self, std::io::Error> {
+    fn decode(_path: &PathBuf, b: &[u8]) -> Result<Self, std::io::Error> {
         ron::de::from_bytes::<TestStruct>(&b)
             .map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))
     }

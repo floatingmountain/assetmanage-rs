@@ -154,8 +154,8 @@ impl<A: Asset> Manager<A> {
             None => {
                 if self.asset_handles.get(key)?.status.eq(&LoadStatus::Loading) {
                     while let Ok((k, b)) = self.load_recv.recv() {
-                        if let Ok(a) = A::decode(&b) {
-                            if let Some(handle) = self.asset_handles.get_mut(k) {
+                        if let Some(handle) = self.asset_handles.get_mut(k) {
+                            if let Ok(a) = A::decode(&handle.path, &b) {
                                 handle.set(a);
                                 if key == k {
                                     return Some(handle.get()?.clone());
@@ -205,8 +205,8 @@ impl<A: Asset> Manager<A> {
             }
         }
         while let Ok((key, b)) = self.load_recv.try_recv() {
-            if let Ok(a) = A::decode(&b) {
-                if let Some(handle) = self.asset_handles.get_mut(key) {
+            if let Some(handle) = self.asset_handles.get_mut(key) {
+                if let Ok(a) = A::decode(&handle.path, &b) {
                     handle.set(a)
                 }
             }

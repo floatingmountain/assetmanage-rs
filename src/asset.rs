@@ -6,7 +6,7 @@ pub trait Asset
 where
     Self: Sized,
 {
-    fn decode(bytes: &[u8]) -> Result<Self, std::io::Error>;
+    fn decode(path: &PathBuf, bytes: &[u8]) -> Result<Self, std::io::Error>;
 }
 
 /// `AssetHandle` holds the Asset and its Metadata
