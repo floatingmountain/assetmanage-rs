@@ -2,7 +2,7 @@ use futures::stream::{FuturesUnordered, StreamExt};
 use slab::Slab;
 use std::path::PathBuf;
 
-use futures::channel::mpsc::{ UnboundedReceiver, UnboundedSender};
+use std::sync::mpsc::{Receiver,Sender};
 
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub enum LoadStatus {
@@ -25,38 +25,28 @@ impl LoadPacket {
 
 ///Loader recieves assets to load from the associated Managers, then loads and returns them asynchronous.
 pub struct Loader {
-    to_load: UnboundedReceiver<LoadPacket>,
-    loaded: Slab<UnboundedSender<(usize, Vec<u8>)>>,
+    to_load: Receiver<LoadPacket>,
+    loaded: Slab<Sender<(usize, Vec<u8>)>>,
 }
 
 impl Loader {
     pub(crate) fn new(
-        to_load: UnboundedReceiver<LoadPacket>,
-        loaded: Slab<UnboundedSender<(usize, Vec<u8>)>>,
+        to_load: Receiver<LoadPacket>,
+        loaded: Slab<Sender<(usize, Vec<u8>)>>,
     ) -> Self {
         Self { to_load, loaded }
     }
     /// run the async load loop
-    ///    
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let mut builder = builder::Builder::new();
-    /// [...]
-    /// let loader = builder.finish_loader();
-    /// async_std::task::spawn(loader.run());
-    /// ```
     #[allow(unused)]
     pub async fn run(mut self) {
         let mut loading = FuturesUnordered::new();
         loop {
-            while let Ok(Some(packet)) = self.to_load.try_next(){
+            while let Ok(packet) = self.to_load.try_recv(){
                 loading.push(load(packet));
             }
             if let Some((manager_idx, asset_key, Ok(bytes))) = loading.next().await {
                 if let Some(sender) = self.loaded.get_mut(manager_idx) {
-                    if sender.unbounded_send((asset_key, bytes)).is_err() {}
+                    if sender.send((asset_key, bytes)).is_err() {}
                 }
             }
         }

@@ -12,7 +12,7 @@ slab = "0.4"
 [dependencies.futures]
 version = "0.3"
 default-features = false
-features = ["std", "alloc"]
+features = ["std"]
 
 [dependencies.async-std]
 version = "1.5"

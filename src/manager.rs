@@ -5,7 +5,8 @@ use crate::{
 use slab::Slab;
 use std::path::PathBuf;
 use std::{collections::HashSet, error::Error, io::ErrorKind, sync::Arc};
-use futures::channel::mpsc::{ UnboundedReceiver, UnboundedSender};
+use std::sync::mpsc::{Receiver,Sender};
+
 
 /// Manages the loading and unloading of one struct that implements the Asset trait.
 /// Regular calls to maintain support lazy loading, auto unload(optional default:off) and auto drop(optional default:off).
@@ -13,11 +14,13 @@ pub struct Manager<A: Asset> {
     drop: bool,
     unload: bool,
     loader_id: usize,
-    load_send: UnboundedSender<LoadPacket>,
-    load_recv: UnboundedReceiver<(usize, Vec<u8>)>,
+    load_send: Sender<LoadPacket>,
+    load_recv: Receiver<(usize, Vec<u8>)>,
     asset_paths: HashSet<PathBuf>,
     asset_handles: Slab<AssetHandle<A>>,
 }
+
+unsafe impl<A:Asset> Sync for Manager<A>{} //channels are unsafe to send but are only used internally.
 
 impl<A: Asset> Manager<A> {
     /// Construct a new, empty `Manager`.
@@ -26,8 +29,8 @@ impl<A: Asset> Manager<A> {
     /// capacity until `insert` is called.
     pub(crate) fn new(
         loader_id: usize,
-        load_send: UnboundedSender<LoadPacket>,
-        load_recv: UnboundedReceiver<(usize, Vec<u8>)>,
+        load_send: Sender<LoadPacket>,
+        load_recv: Receiver<(usize, Vec<u8>)>,
     ) -> Self {
         Self {
             drop: false,
@@ -108,7 +111,7 @@ impl<A: Asset> Manager<A> {
             format!("Key {} not found", key),
         ))?;
         a.status = LoadStatus::Loading;
-        Ok(self.load_send.unbounded_send(LoadPacket::new(self.loader_id, key, a.path.clone()))?)
+        Ok(self.load_send.send(LoadPacket::new(self.loader_id, key, a.path.clone()))?)
     }
     /// Unloads an Asset known to the the Manager. The Asset can be reloaded with the same key.
     ///
@@ -149,7 +152,7 @@ impl<A: Asset> Manager<A> {
         match self.asset_handles.get(key)?.get() {
             None => {
                 if self.asset_handles.get(key)?.status.eq(&LoadStatus::Loading) {
-                    while let Ok(Some((k, b))) = self.load_recv.try_next() {
+                    while let Ok((k, b)) = self.load_recv.recv() {
                         if let Ok(a) = A::decode(&b) {
                             if let Some(handle) = self.asset_handles.get_mut(k) {
                                 handle.set(a);
@@ -200,7 +203,7 @@ impl<A: Asset> Manager<A> {
                 self.drop(key);
             }
         }
-        while let Ok(Some((key, b))) = self.load_recv.try_next() {
+        while let Ok((key, b)) = self.load_recv.try_recv() {
             if let Ok(a) = A::decode(&b) {
                 if let Some(handle) = self.asset_handles.get_mut(key) {
                     handle.set(a)
