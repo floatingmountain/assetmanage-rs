@@ -1,8 +1,8 @@
-use futures::stream::{FuturesUnordered, StreamExt};
+use futures::{stream::{FuturesUnordered, StreamExt}};
 use slab::Slab;
 use std::path::PathBuf;
-
 use std::sync::mpsc::{Receiver,Sender};
+use std::io::Read;
 
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub enum LoadStatus {
@@ -44,7 +44,7 @@ impl Loader {
             while let Ok(packet) = self.to_load.try_recv(){
                 loading.push(load(packet));
             }
-            if let Some((manager_idx, asset_key, Ok(bytes))) = loading.next().await {
+            if let Some(Ok((manager_idx, asset_key,bytes))) = loading.next().await {
                 if let Some(sender) = self.loaded.get_mut(manager_idx) {
                     if sender.send((asset_key, bytes)).is_err() {}
                 }
@@ -53,8 +53,12 @@ impl Loader {
     }
 }
 
+// https://async.rs/blog/stop-worrying-about-blocking-the-new-async-std-runtime/
 async fn load(
     packet: LoadPacket
-) -> (usize, usize, Result<Vec<u8>, async_std::io::Error>) {
-    (packet.manager_idx, packet.asset_key, async_std::fs::read(packet.asset_path).await)
+) -> std::io::Result<(usize, usize, Vec<u8>)> {
+    let mut file = std::fs::File::open(packet.asset_path)?;
+    let mut contents = vec![];
+    file.read_to_end(&mut contents)?;
+    Ok((packet.manager_idx, packet.asset_key, contents))
 }
