@@ -17,6 +17,7 @@ pub struct Manager<A: Asset> {
     load_recv: Receiver<(usize, Vec<u8>)>,
     asset_paths: HashSet<PathBuf>,
     asset_handles: Slab<AssetHandle<A>>,
+    loaded_once: Vec<usize>,
 }
 
 unsafe impl<A: Asset> Sync for Manager<A> {} //channels are unsafe to send but are only used internally.
@@ -39,6 +40,7 @@ impl<A: Asset> Manager<A> {
             load_recv,
             asset_paths: HashSet::new(),
             asset_handles: Slab::new(),
+            loaded_once: Vec::new(),
         }
     }
 
@@ -157,6 +159,7 @@ impl<A: Asset> Manager<A> {
                         if let Ok(a) = A::decode(&b) {
                             if let Some(handle) = self.asset_handles.get_mut(k) {
                                 handle.set(a);
+                                self.loaded_once.push(key);
                                 if key == k {
                                     return Some(handle.get()?.clone());
                                 }
@@ -168,6 +171,12 @@ impl<A: Asset> Manager<A> {
             }
             Some(a) => Some(a.clone()),
         }
+    }
+    /// Returns loaded assets once as soon as they have the LoadStatus::Loaded. 
+    pub fn get_loaded_once(&mut self) -> Vec<usize>{
+        let mut list = Vec::new();
+        std::mem::swap(&mut list, &mut self.loaded_once);
+        list
     }
     /// Returns the LoadStatus of an Asset known to the the Manager.
     ///
@@ -207,7 +216,8 @@ impl<A: Asset> Manager<A> {
         while let Ok((key, b)) = self.load_recv.try_recv() {
             if let Ok(a) = A::decode(&b) {
                 if let Some(handle) = self.asset_handles.get_mut(key) {
-                    handle.set(a)
+                    handle.set(a);
+                    self.loaded_once.push(key);
                 }
             }
         }
