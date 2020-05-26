@@ -194,6 +194,13 @@ impl<A: Asset> Manager<A> {
     pub fn status(&self, key: usize) -> Option<LoadStatus> {
         Some(self.asset_handles.get(key)?.status)
     }
+    /// Returns the Path of an Asset known to the the Manager.
+    ///
+    /// If the key is not found it will return None.
+    ///
+    pub fn path(&self, key:usize) -> Option<&PathBuf>{
+        Some(&self.asset_handles.get(key)?.path)
+    }
     /// Maintains the manager. Needs to be called for lazy loading, to unload unused Assets and maybe even drop them.
     /// The default Manager will not drop or unload any Assets. So maintain will just load Assets.
     /// Will be slow if used with a large initial capacity + min_drop + min_unload as it will iterate over every Asset.
