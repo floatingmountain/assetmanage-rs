@@ -111,6 +111,12 @@ impl<A: Asset> Manager<A> {
             ErrorKind::NotFound,
             format!("Key {} not found", key),
         ))?;
+        if !a.path.exists(){
+            return Err(Box::new(std::io::Error::new(
+                ErrorKind::NotFound,
+                format!("Key {} not found", key),
+            )))
+        }
         a.status = LoadStatus::Loading;
         Ok(self
             .load_send
