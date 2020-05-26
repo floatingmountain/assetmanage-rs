@@ -175,7 +175,9 @@ impl<A: Asset> Manager<A> {
     /// Returns loaded assets once as soon as they have the LoadStatus::Loaded. 
     pub fn get_loaded_once(&mut self) -> Vec<usize>{
         let mut list = Vec::new();
-        std::mem::swap(&mut list, &mut self.loaded_once);
+        if !self.loaded_once.is_empty(){
+            std::mem::swap(&mut list, &mut self.loaded_once);
+        }
         list
     }
     /// Returns the LoadStatus of an Asset known to the the Manager.
