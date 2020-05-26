@@ -1,7 +1,7 @@
 use super::*;
-use serde::Deserialize;
-use std::{time::Duration, io::ErrorKind};
 use loader::LoadStatus;
+use serde::Deserialize;
+use std::{io::ErrorKind, time::Duration};
 
 /// TestStruct demonstrates implementing Asset
 #[derive(Deserialize)]
@@ -34,8 +34,11 @@ fn it_works() {
     //auto_dropout manager
     let mut manager3 = builder.create_manager::<TestStruct>().auto_dropout();
     //auto_unload + auto_dropout manager
-    let mut manager4 = builder.create_manager::<TestStruct>().auto_unload().auto_dropout();
-    
+    let mut manager4 = builder
+        .create_manager::<TestStruct>()
+        .auto_unload()
+        .auto_dropout();
+
     let loader = builder.finish_loader();
     async_std::task::spawn(loader.run());
     {
@@ -51,7 +54,7 @@ fn it_works() {
         std::thread::sleep(Duration::from_millis(50)); //wait for load
         manager1.maintain(); //Asset is fetched from Loader during maintain
         assert!(manager1.status(key).eq(&Some(LoadStatus::Loaded))); //Asset is loaded
-        let _a = manager1.get(key).unwrap(); //Get the loaded asset 
+        let _a = manager1.get(key).unwrap(); //Get the loaded asset
         manager1.unload(key); // manually unload the asset
         assert!(manager1.status(key).eq(&Some(LoadStatus::NotLoaded))); //Asset not loaded
         assert!(manager1.get(key).is_none()); //Cannot get the asset
@@ -108,7 +111,7 @@ fn it_works() {
 }
 
 #[test]
-fn test_load_get(){
+fn test_load_get() {
     let path_to_testfile = std::env::current_dir()
         .unwrap()
         .join("assets/TestAsset.ron");
@@ -119,7 +122,7 @@ fn test_load_get(){
     let mut manager = builder.create_manager::<TestStruct>();
     let loader = builder.finish_loader();
     async_std::task::spawn(loader.run());
-    
+
     let key = manager.insert(path_to_testfile.clone());
     let key_c = manager.insert(path_to_testfilecopy.clone());
     manager.load(key).unwrap();

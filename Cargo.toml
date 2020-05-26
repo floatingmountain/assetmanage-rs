@@ -8,10 +8,14 @@ edition = "2018"
 
 [dependencies]
 slab = "0.4"
-async-std = "1.5"
-futures = "0.3"
-crossbeam = "0.7"
+
+[dependencies.futures]
+version = "0.3"
+default-features = false
+features = ["std"]
+
 [dev-dependencies]
+async-std ="1.5"
 serde = { version = "1.0", features = ["derive"] }
 ron = "0.5"
 legion = "0.2.1"
