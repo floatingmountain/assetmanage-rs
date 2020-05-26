@@ -114,7 +114,7 @@ impl<A: Asset> Manager<A> {
         if !a.path.exists(){
             return Err(Box::new(std::io::Error::new(
                 ErrorKind::NotFound,
-                format!("Key {} not found", key),
+                format!("File not found! {:?}", a.path),
             )))
         }
         a.status = LoadStatus::Loading;
