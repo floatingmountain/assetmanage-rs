@@ -26,11 +26,11 @@ impl Builder {
     }
     /// Create a new, empty `Manager<A>`.
     #[allow(unused)]
-    pub fn create_manager<A: Asset>(&mut self) -> Manager<A> {
+    pub fn create_manager<A: Asset>(&mut self, data: A::DataManager) -> Manager<A> {
         let (s, r) = channel();
         let loader_id = self.loaded.len();
         self.loaded.push(s);
-        Manager::new(loader_id, self.to_load_send.clone(), r)
+        Manager::new(loader_id, self.to_load_send.clone(), r, data)
     }
 
     /// Create the `Loader` associated with `Managers` built by this `Builder`.

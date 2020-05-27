@@ -4,9 +4,10 @@ use std::{path::PathBuf, sync::Arc};
 /// Any struct implementing the `Asset` trait can be Stored inside a corresponding `Manager`
 pub trait Asset
 {
-    type Data;
+    type DataManager;
+    type DataAsset;
     type Output;
-    fn decode(bytes: &[u8], meta: &Self::Data) -> Result<Self::Output, std::io::Error>;
+    fn decode(bytes: &[u8], data_ass: &Self::DataAsset, data_mgr: &Self::DataManager) -> Result<Self::Output, std::io::Error>;
 }
 
 /// `AssetHandle` holds the Asset and its Metadata
@@ -18,11 +19,11 @@ where
     pub(crate) path: PathBuf,
     asset: Option<Arc<A::Output>>,
     pub status: LoadStatus,
-    pub data: A::Data,
+    pub data: A::DataAsset,
 }
 
 impl<A: Asset> AssetHandle<A> {
-    pub(crate) fn new(path: PathBuf, data:A::Data) -> Self {
+    pub(crate) fn new(path: PathBuf, data:A::DataAsset) -> Self {
         Self {
             path,
             asset: None,

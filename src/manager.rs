@@ -16,6 +16,7 @@ pub struct Manager<A: Asset> {
     load_recv: Receiver<(PathBuf, Vec<u8>)>,
     asset_handles: HashMap<PathBuf, AssetHandle<A>>,
     loaded_once: Vec<PathBuf>,
+    data: A::DataManager,
 }
 
 unsafe impl<A: Asset> Sync for Manager<A> {} //channels are unsafe to send but are only used internally.
@@ -29,6 +30,7 @@ impl<A: Asset> Manager<A> {
         loader_id: usize,
         load_send: Sender<(usize,PathBuf)>,
         load_recv: Receiver<(PathBuf, Vec<u8>)>,
+        data: A::DataManager,
     ) -> Self {
         Self {
             drop: false,
@@ -38,6 +40,7 @@ impl<A: Asset> Manager<A> {
             load_recv,
             asset_handles: HashMap::new(),
             loaded_once: Vec::new(),
+            data,
         }
     }
 
@@ -70,7 +73,7 @@ impl<A: Asset> Manager<A> {
     /// If auto_dropout is activated the Asset has to be explicitly loaded with the given key after inserting
     /// or it will be dropped in the next call to maintain.
     ///
-    pub fn insert<P: AsRef<Path>>(&mut self, path: P, data: A::Data){
+    pub fn insert<P: AsRef<Path>>(&mut self, path: P, data: A::DataAsset){
         let path: PathBuf = path.as_ref().into();
         self.asset_handles.entry(path.clone()).or_insert(AssetHandle::new(path, data));
     }
@@ -80,7 +83,7 @@ impl<A: Asset> Manager<A> {
     /// If auto_dropout is activated the Asset has to be explicitly loaded with the given key after inserting
     /// or it will be dropped in the next call to maintain.
     ///
-    pub fn insert_raw<P: AsRef<Path>>(&mut self, path: P, asset: A::Output, data: A::Data){
+    pub fn insert_raw<P: AsRef<Path>>(&mut self, path: P, asset: A::Output, data: A::DataAsset){
         let path: PathBuf = path.as_ref().into();
         let mut handle = AssetHandle::new(path.clone(), data);
         handle.set(asset);
@@ -146,7 +149,7 @@ impl<A: Asset> Manager<A> {
                 if let Some( handle)= self.asset_handles.get_mut(path.as_ref()) {
                     if handle.status.eq(&LoadStatus::Loading){
                     while let Ok((p, b)) = self.load_recv.recv() {
-                        if let Ok(a) = A::decode(&b,&handle.data) {
+                        if let Ok(a) = A::decode(&b,&handle.data, &self.data) {
                                 handle.set(a);
                                 self.loaded_once.push(path.as_ref().into());
                                 if p.eq(path.as_ref()) {
@@ -201,7 +204,7 @@ impl<A: Asset> Manager<A> {
         }
         for (p,b) in self.load_recv.try_iter(){
             if let Some(handle) = self.asset_handles.get_mut(p.as_path()) {
-                if let Ok(a) = A::decode(&b,&handle.data) {
+                if let Ok(a) = A::decode(&b,&handle.data, &self.data) {
                     handle.set(a);
                     self.loaded_once.push(p);
                 }

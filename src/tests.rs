@@ -10,12 +10,13 @@ struct TestStruct {
 }
 
 impl Asset for TestStruct {
-    fn decode(b: &[u8], _:&Self::Data) -> Result<Self, std::io::Error> {
+    fn decode(b: &[u8], _:&Self::DataAsset,_:&Self::DataManager,) -> Result<Self, std::io::Error> {
         ron::de::from_bytes::<TestStruct>(&b)
             .map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))
     }
     type Output = TestStruct;
-    type Data = ();
+    type DataAsset = ();
+    type DataManager = ();
 }
 
 #[test]
@@ -30,14 +31,14 @@ fn it_works() {
     let mut builder = builder::Builder::new();
 
     //default manager
-    let mut manager1 = builder.create_manager::<TestStruct>();
+    let mut manager1 = builder.create_manager::<TestStruct>(());
     //auto_unload_manager
-    let mut manager2 = builder.create_manager::<TestStruct>().auto_unload();
+    let mut manager2 = builder.create_manager::<TestStruct>(()).auto_unload();
     //auto_dropout manager
-    let mut manager3 = builder.create_manager::<TestStruct>().auto_dropout();
+    let mut manager3 = builder.create_manager::<TestStruct>(()).auto_dropout();
     //auto_unload + auto_dropout manager
     let mut manager4 = builder
-        .create_manager::<TestStruct>()
+        .create_manager::<TestStruct>(())
         .auto_unload()
         .auto_dropout();
 
@@ -117,7 +118,7 @@ fn test_load_get() {
         .unwrap()
         .join("assets/TestAssetCopy.ron");
     let mut builder = builder::Builder::new();
-    let mut manager = builder.create_manager::<TestStruct>();
+    let mut manager = builder.create_manager::<TestStruct>(());
     let loader = builder.finish_loader();
     async_std::task::spawn(loader.run());
 
