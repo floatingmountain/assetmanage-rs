@@ -3,10 +3,9 @@ use std::{path::PathBuf, sync::Arc};
 
 /// Any struct implementing the `Asset` trait can be Stored inside a corresponding `Manager`
 pub trait Asset
-where
-    Self: Sized,
 {
-    fn decode(bytes: &[u8]) -> Result<Self, std::io::Error>;
+    type Output;
+    fn decode(bytes: &[u8]) -> Result<Self::Output, std::io::Error>;
 }
 
 /// `AssetHandle` holds the Asset and its Metadata
@@ -16,7 +15,7 @@ where
     A: Asset,
 {
     pub(crate) path: PathBuf,
-    asset: Option<Arc<A>>,
+    asset: Option<Arc<A::Output>>,
     pub status: LoadStatus,
 }
 
@@ -32,11 +31,11 @@ impl<A: Asset> AssetHandle<A> {
         self.asset = None;
         self.status = LoadStatus::NotLoaded;
     }
-    pub(crate) fn set(&mut self, a: A) {
+    pub(crate) fn set(&mut self, a: A::Output) {
         self.asset = Some(Arc::new(a));
         self.status = LoadStatus::Loaded;
     }
-    pub(crate) fn get(&self) -> Option<&Arc<A>> {
+    pub(crate) fn get(&self) -> Option<&Arc<A::Output>> {
         self.asset.as_ref()
     }
 }

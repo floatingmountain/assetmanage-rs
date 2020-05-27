@@ -14,6 +14,7 @@ impl Asset for TestStruct {
         ron::de::from_bytes::<TestStruct>(&b)
             .map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))
     }
+    type Output = TestStruct;
 }
 
 #[test]

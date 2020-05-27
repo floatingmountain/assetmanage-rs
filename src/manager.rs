@@ -80,7 +80,7 @@ impl<A: Asset> Manager<A> {
     /// If auto_dropout is activated the Asset has to be explicitly loaded with the given key after inserting
     /// or it will be dropped in the next call to maintain.
     ///
-    pub fn insert_raw<P: AsRef<Path>>(&mut self, path: P, asset: A){
+    pub fn insert_raw<P: AsRef<Path>>(&mut self, path: P, asset: A::Output){
         let path: PathBuf = path.as_ref().into();
         let mut handle = AssetHandle::new(path.clone());
         handle.set(asset);
@@ -131,7 +131,7 @@ impl<A: Asset> Manager<A> {
     /// If the Asset is not loaded it will return None.
     /// Call status() to get detailed information.
     ///
-    pub fn get<P: AsRef<Path>>(&self, path: P) -> Option<Arc<A>> {
+    pub fn get<P: AsRef<Path>>(&self, path: P) -> Option<Arc<A::Output>> {
         Some(self.asset_handles.get(path.as_ref())?.get()?.clone())
     }
     /// Returns an Asset known to the the Manager.
@@ -140,7 +140,7 @@ impl<A: Asset> Manager<A> {
     /// If the Asset is not loading it will return None.
     /// Will wait for the Asset to become available on the receiver and then returning it.
     ///
-    pub fn get_blocking<P: AsRef<Path>>(&mut self, path: P) -> Option<Arc<A>> {
+    pub fn get_blocking<P: AsRef<Path>>(&mut self, path: P) -> Option<Arc<A::Output>> {
         match self.asset_handles.get(path.as_ref())?.get() {
             None => {
                 if let Some( handle)= self.asset_handles.get_mut(path.as_ref()) {
@@ -214,7 +214,7 @@ impl<A: Asset> Manager<A> {
 }
 
 impl<A: Asset> Iterator for Manager<A> {
-    type Item = Option<Arc<A>>;
+    type Item = Option<Arc<A::Output>>;
     fn next(&mut self) -> Option<Self::Item> {
         self.asset_handles
             .iter()
