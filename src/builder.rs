@@ -1,17 +1,16 @@
 use crate::{
-    loader::{LoadPacket, Loader},
+    loader::{Loader},
     Asset, Manager,
 };
-use slab::Slab;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::{path::PathBuf, sync::mpsc::{channel, Receiver, Sender}};
 
 /// Builder is used to Build Managers with a loading backend.
 /// construct a Builder, create Managers and finish by returning a loader.
 #[allow(unused)]
 pub struct Builder {
-    to_load_send: Sender<LoadPacket>,
-    to_load_recv: Receiver<LoadPacket>,
-    loaded: Slab<Sender<(usize, Vec<u8>)>>,
+    to_load_send: Sender<(usize,PathBuf)>,
+    to_load_recv: Receiver<(usize,PathBuf)>,
+    loaded: Vec<Sender<(PathBuf, Vec<u8>)>>,
 }
 
 impl Builder {
@@ -22,14 +21,15 @@ impl Builder {
         Self {
             to_load_send,
             to_load_recv,
-            loaded: Slab::new(),
+            loaded: Vec::new(),
         }
     }
     /// Create a new, empty `Manager<A>`.
     #[allow(unused)]
     pub fn create_manager<A: Asset>(&mut self) -> Manager<A> {
         let (s, r) = channel();
-        let loader_id = self.loaded.insert(s);
+        let loader_id = self.loaded.len();
+        self.loaded.push(s);
         Manager::new(loader_id, self.to_load_send.clone(), r)
     }
 
