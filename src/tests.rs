@@ -10,11 +10,12 @@ struct TestStruct {
 }
 
 impl Asset for TestStruct {
-    fn decode(b: &[u8]) -> Result<Self, std::io::Error> {
+    fn decode(b: &[u8], _:&Self::Data) -> Result<Self, std::io::Error> {
         ron::de::from_bytes::<TestStruct>(&b)
             .map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))
     }
     type Output = TestStruct;
+    type Data = ();
 }
 
 #[test]
@@ -44,7 +45,7 @@ fn it_works() {
     async_std::task::spawn(loader.run());
     {
         //default demonstration
-        manager1.insert(&path1);
+        manager1.insert(&path1,());
         assert!(manager1.status(&path1).eq(&Some(LoadStatus::NotLoaded))); //Asset not loaded
         manager1.load(&path1).unwrap();
         assert!(manager1.status(&path1).eq(&Some(LoadStatus::Loading))); //Asset still not loaded but is loading
@@ -59,7 +60,7 @@ fn it_works() {
     }
     {
         //auto-unload demonstration
-        manager2.insert(path1.clone());
+        manager2.insert(&path1,());
         manager2.load(&path1).unwrap();
         std::thread::sleep(Duration::from_millis(50));
         manager2.maintain();
@@ -76,11 +77,11 @@ fn it_works() {
     }
     {
         //auto-dropout demonstration
-        manager3.insert(&path1);
+        manager3.insert(&path1,());
         manager3.maintain(); //Assethandle will be dropped during this maintain. Cant be loaded afterwards.
         assert!(manager3.load(&path1).is_err()); //Cant be loaded
         assert!(manager3.status(&path1).eq(&None)); //Asset not loaded
-        manager3.insert(&path1);
+        manager3.insert(&path1,());
         manager3.load(&path1).unwrap();
         manager3.maintain();
         std::thread::sleep(Duration::from_millis(50)); //wait for load
@@ -94,7 +95,7 @@ fn it_works() {
     }
     {
         //auto-dropout + auto-unload demonstration
-        manager4.insert(&path1);
+        manager4.insert(&path1,());
         manager4.load(&path1).unwrap();
         std::thread::sleep(Duration::from_millis(50)); //wait for load
         manager4.maintain();
@@ -120,8 +121,8 @@ fn test_load_get() {
     let loader = builder.finish_loader();
     async_std::task::spawn(loader.run());
 
-    manager.insert(&path);
-    manager.insert(&path2);
+    manager.insert(&path,());
+    manager.insert(&path2,());
     manager.load(&path).unwrap();
     manager.load(&path2).unwrap();
     let s1 = manager.get_blocking(&path).unwrap();

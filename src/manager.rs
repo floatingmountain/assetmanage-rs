@@ -70,9 +70,9 @@ impl<A: Asset> Manager<A> {
     /// If auto_dropout is activated the Asset has to be explicitly loaded with the given key after inserting
     /// or it will be dropped in the next call to maintain.
     ///
-    pub fn insert<P: AsRef<Path>>(&mut self, path: P){
+    pub fn insert<P: AsRef<Path>>(&mut self, path: P, data: A::Data){
         let path: PathBuf = path.as_ref().into();
-        self.asset_handles.entry(path.clone()).or_insert(AssetHandle::new(path));
+        self.asset_handles.entry(path.clone()).or_insert(AssetHandle::new(path, data));
     }
     /// Insert an Assets Path and the loaded Asset into the Manager and return its key.
     /// If the specified path is already known to the Manager it will return the known paths key.
@@ -80,9 +80,9 @@ impl<A: Asset> Manager<A> {
     /// If auto_dropout is activated the Asset has to be explicitly loaded with the given key after inserting
     /// or it will be dropped in the next call to maintain.
     ///
-    pub fn insert_raw<P: AsRef<Path>>(&mut self, path: P, asset: A::Output){
+    pub fn insert_raw<P: AsRef<Path>>(&mut self, path: P, asset: A::Output, data: A::Data){
         let path: PathBuf = path.as_ref().into();
-        let mut handle = AssetHandle::new(path.clone());
+        let mut handle = AssetHandle::new(path.clone(), data);
         handle.set(asset);
         self.asset_handles.insert(path, handle);
     }
@@ -146,7 +146,7 @@ impl<A: Asset> Manager<A> {
                 if let Some( handle)= self.asset_handles.get_mut(path.as_ref()) {
                     if handle.status.eq(&LoadStatus::Loading){
                     while let Ok((p, b)) = self.load_recv.recv() {
-                        if let Ok(a) = A::decode(&b) {
+                        if let Ok(a) = A::decode(&b,&handle.data) {
                                 handle.set(a);
                                 self.loaded_once.push(path.as_ref().into());
                                 if p.eq(path.as_ref()) {
@@ -200,8 +200,8 @@ impl<A: Asset> Manager<A> {
             }
         }
         for (p,b) in self.load_recv.try_iter(){
-            if let Ok(a) = A::decode(&b) {
-                if let Some(handle) = self.asset_handles.get_mut(p.as_path()) {
+            if let Some(handle) = self.asset_handles.get_mut(p.as_path()) {
+                if let Ok(a) = A::decode(&b,&handle.data) {
                     handle.set(a);
                     self.loaded_once.push(p);
                 }
