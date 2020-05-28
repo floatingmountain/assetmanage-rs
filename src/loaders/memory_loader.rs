@@ -1,19 +1,17 @@
 use futures::stream::{FuturesUnordered, StreamExt};
 use std::io::Read;
-use std::{path::PathBuf, sync::mpsc::{ Sender}};
-
-use futures::channel::mpsc::{UnboundedReceiver};
+use std::{path::PathBuf, sync::mpsc::{ Sender,Receiver}};
 
 ///MemoryLoader recieves assets to load from the associated Managers, then loads and returns them asynchronous.
 pub struct MemoryLoader {
-    to_load: UnboundedReceiver<(usize, PathBuf)>,
+    to_load: Receiver<(usize, PathBuf)>,
     loaded: Vec<Sender<(PathBuf, Vec<u8>)>>,
 }
 
 impl super::Loader for MemoryLoader{
     type Return = Vec<u8>;
     fn new(
-        to_load: UnboundedReceiver<(usize, PathBuf)>,
+        to_load: Receiver<(usize, PathBuf)>,
         loaded: Vec<Sender<(PathBuf, Self::Return)>>,
     ) -> Self {
         Self { to_load, loaded }
@@ -23,7 +21,7 @@ impl super::Loader for MemoryLoader{
 impl MemoryLoader {
     #[allow(unused)]
     pub(crate) fn new(
-        to_load: UnboundedReceiver<(usize, PathBuf)>,
+        to_load: Receiver<(usize, PathBuf)>,
         loaded: Vec<Sender<(PathBuf, Vec<u8>)>>,
     ) -> Self {
         Self { to_load, loaded }
@@ -33,9 +31,8 @@ impl MemoryLoader {
     pub async fn run(mut self) {
         let mut loading = FuturesUnordered::new();
         loop {
-            while let Some((manager_idx,path)) = self.to_load.next().await {
-                loading.push(load(manager_idx,path));
-            }
+            self.to_load.try_iter().for_each(|(id,p)| loading.push(load(id,p)));
+
             if let Some(Ok((manager_idx, path, bytes))) = loading.next().await {
                 if let Some(sender) = self.loaded.get_mut(manager_idx) {
                     if sender.send((path, bytes)).is_err() {}

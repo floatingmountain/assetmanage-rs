@@ -3,9 +3,9 @@ use crate::{
     loaders::{LoadStatus, Loader},
 };
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::Receiver;
+use std::sync::mpsc::{Receiver, Sender};
 use std::{collections::HashMap, error::Error, io::ErrorKind, sync::Arc};
-use futures::channel::mpsc::UnboundedSender;
+
 /// Manages the loading and unloading of one struct that implements the Asset trait.
 /// Regular calls to maintain support lazy loading, auto unload(optional default:off) and auto drop(optional default:off).
 pub struct Manager<A, L>
@@ -16,7 +16,7 @@ L: Loader
     drop: bool,
     unload: bool,
     loader_id: usize,
-    load_send: UnboundedSender<(usize,PathBuf)>,
+    load_send: Sender<(usize,PathBuf)>,
     load_recv: Receiver<(PathBuf, L::Return)>,
     asset_handles: HashMap<PathBuf, AssetHandle<A, L>>,
     loaded_once: Vec<PathBuf>,
@@ -32,7 +32,7 @@ impl<A, L> Manager<A, L> where A: Asset<L>, L: Loader  {
     /// capacity until `insert` is called.
     pub(crate) fn new(
         loader_id: usize,
-        load_send: UnboundedSender<(usize,PathBuf)>,
+        load_send: Sender<(usize,PathBuf)>,
         load_recv: Receiver<(PathBuf, L::Return)>,
         data: A::DataManager,
     ) -> Self {
@@ -113,7 +113,7 @@ impl<A, L> Manager<A, L> where A: Asset<L>, L: Loader  {
         a.status = LoadStatus::Loading;
         Ok(self
             .load_send
-            .unbounded_send((self.loader_id, path.as_ref().into()))?)
+            .send((self.loader_id, path.as_ref().into()))?)
     }
     /// Unloads an Asset known to the the Manager. The Asset can be reloaded with the same key.
     ///
