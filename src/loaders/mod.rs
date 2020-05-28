@@ -13,9 +13,9 @@ pub enum LoadStatus {
 }
 
 pub trait Loader {
-    type Output: Source;
+    type Source: Source;
     fn new(
         to_load: Receiver<(usize, PathBuf)>,
-        loaded: Vec<Sender<(PathBuf, <Self::Output as Source>::Output)>>,
+        loaded: Vec<Sender<(PathBuf, <Self::Source as Source>::Output)>>,
     ) -> Self;
 }

@@ -18,7 +18,7 @@ where
     unload: bool,
     loader_id: usize,
     load_send: Sender<(usize, PathBuf)>,
-    load_recv: Receiver<(PathBuf, <L::Output as Source>::Output)>,
+    load_recv: Receiver<(PathBuf, <L::Source as Source>::Output)>,
     asset_handles: HashMap<PathBuf, AssetHandle<A, L>>,
     loaded_once: Vec<PathBuf>,
     data: A::DataManager,
@@ -43,7 +43,7 @@ where
     pub(crate) fn new(
         loader_id: usize,
         load_send: Sender<(usize, PathBuf)>,
-        load_recv: Receiver<(PathBuf, <L::Output as Source>::Output)>,
+        load_recv: Receiver<(PathBuf, <L::Source as Source>::Output)>,
         data: A::DataManager,
     ) -> Self {
         Self {

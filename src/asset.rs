@@ -13,7 +13,7 @@ where
     type DataAsset;
     type Output;
     fn decode(
-        bytes: <L::Output as Source>::Output,
+        bytes: <L::Source as Source>::Output,
         data_ass: &Self::DataAsset,
         data_mgr: &Self::DataManager,
     ) -> Result<Self::Output, std::io::Error>;

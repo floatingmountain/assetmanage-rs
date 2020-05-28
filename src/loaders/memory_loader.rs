@@ -14,10 +14,10 @@ pub struct MemoryLoader {
 }
 
 impl super::Loader for MemoryLoader {
-    type Output = DiskSource;
+    type Source = DiskSource;
     fn new(
         to_load: Receiver<(usize, PathBuf)>,
-        loaded: Vec<Sender<(PathBuf, <Self::Output as Source>::Output)>>,
+        loaded: Vec<Sender<(PathBuf, <Self::Source as Source>::Output)>>,
     ) -> Self {
         Self { to_load, loaded }
     }
@@ -38,7 +38,7 @@ impl MemoryLoader {
         loop {
             self.to_load.try_iter().for_each(|(id, p)| {
                 loading.push(async move {
-                    (id, p.clone(), <<Self as Loader>::Output as Source>::load(p))
+                    (id, p.clone(), <<Self as Loader>::Source as Source>::load(p))
                 })
             });
 

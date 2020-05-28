@@ -14,7 +14,7 @@ where
 {
     to_load_send: Sender<(usize, PathBuf)>,
     to_load_recv: Receiver<(usize, PathBuf)>,
-    loaded: Vec<Sender<(PathBuf, <<L as Loader>::Output as Source>::Output)>>,
+    loaded: Vec<Sender<(PathBuf, <<L as Loader>::Source as Source>::Output)>>,
     _phantom: PhantomData<L>,
 }
 
