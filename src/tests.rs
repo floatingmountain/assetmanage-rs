@@ -10,7 +10,7 @@ struct TestStruct {
 }
 
 impl Asset<MemoryLoader> for TestStruct {
-    fn decode(b: &Vec<u8>, _:&Self::DataAsset,_:&Self::DataManager,) -> Result<Self, std::io::Error> {
+    fn decode(b: Vec<u8>, _:&Self::DataAsset,_:&Self::DataManager,) -> Result<Self, std::io::Error> {
         ron::de::from_bytes::<TestStruct>(&b)
             .map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))
     }

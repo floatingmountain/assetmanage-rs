@@ -9,7 +9,7 @@ where
     type DataManager;
     type DataAsset;
     type Output;
-    fn decode(bytes: &L::Return, data_ass: &Self::DataAsset, data_mgr: &Self::DataManager) -> Result<Self::Output, std::io::Error>;
+    fn decode(bytes: L::Return, data_ass: &Self::DataAsset, data_mgr: &Self::DataManager) -> Result<Self::Output, std::io::Error>;
 }
 
 /// `AssetHandle` holds the Asset and its Metadata

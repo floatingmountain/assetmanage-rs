@@ -153,7 +153,7 @@ impl<A, L> Manager<A, L> where A: Asset<L>, L: Loader  {
                 if let Some( handle)= self.asset_handles.get_mut(path.as_ref()) {
                     if handle.status.eq(&LoadStatus::Loading){
                     while let Ok((p, b)) = self.load_recv.recv() {
-                        if let Ok(a) = A::decode(&b,&handle.data, &self.data) {
+                        if let Ok(a) = A::decode(b,&handle.data, &self.data) {
                                 handle.set(a);
                                 self.loaded_once.push(path.as_ref().into());
                                 if p.eq(path.as_ref()) {
@@ -208,7 +208,7 @@ impl<A, L> Manager<A, L> where A: Asset<L>, L: Loader  {
         }
         for (p,b) in self.load_recv.try_iter(){
             if let Some(handle) = self.asset_handles.get_mut(p.as_path()) {
-                if let Ok(a) = A::decode(&b,&handle.data, &self.data) {
+                if let Ok(a) = A::decode(b,&handle.data, &self.data) {
                     handle.set(a);
                     self.loaded_once.push(p);
                 }
