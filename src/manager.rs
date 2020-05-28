@@ -195,7 +195,7 @@ where
     ///
     /// If the key is not found it will return None.
     ///
-    pub fn status<P: AsRef<Path>>(&mut self, path: P) -> Option<LoadStatus> {
+    pub fn status<P: AsRef<Path>>(&self, path: P) -> Option<LoadStatus> {
         Some(self.asset_handles.get(path.as_ref())?.status)
     }
     /// Maintains the manager. Needs to be called for lazy loading, to unload unused Assets and maybe even drop them.
