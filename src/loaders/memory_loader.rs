@@ -1,7 +1,7 @@
 use futures::stream::{FuturesUnordered, StreamExt};
 use std::io::Read;
 use std::{path::PathBuf, sync::mpsc::{ Sender,Receiver}};
-
+use crate::sources::{DiskSource,Source};
 ///MemoryLoader recieves assets to load from the associated Managers, then loads and returns them asynchronous.
 pub struct MemoryLoader {
     to_load: Receiver<(usize, PathBuf)>,
@@ -9,10 +9,10 @@ pub struct MemoryLoader {
 }
 
 impl super::Loader for MemoryLoader{
-    type Return = Vec<u8>;
+    type Output = DiskSource;
     fn new(
         to_load: Receiver<(usize, PathBuf)>,
-        loaded: Vec<Sender<(PathBuf, Self::Return)>>,
+        loaded: Vec<Sender<(PathBuf, <Self::Output as Source>::Output)>>,
     ) -> Self {
         Self { to_load, loaded }
     }

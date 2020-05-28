@@ -1,6 +1,6 @@
 use crate::{
     asset::{Asset, AssetHandle},
-    loaders::{LoadStatus, Loader},
+    loaders::{LoadStatus, Loader}, sources::Source,
 };
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, Sender};
@@ -17,7 +17,7 @@ L: Loader
     unload: bool,
     loader_id: usize,
     load_send: Sender<(usize,PathBuf)>,
-    load_recv: Receiver<(PathBuf, L::Return)>,
+    load_recv: Receiver<(PathBuf, <L::Output as Source>::Output)>,
     asset_handles: HashMap<PathBuf, AssetHandle<A, L>>,
     loaded_once: Vec<PathBuf>,
     data: A::DataManager,
@@ -33,7 +33,7 @@ impl<A, L> Manager<A, L> where A: Asset<L>, L: Loader  {
     pub(crate) fn new(
         loader_id: usize,
         load_send: Sender<(usize,PathBuf)>,
-        load_recv: Receiver<(PathBuf, L::Return)>,
+        load_recv: Receiver<(PathBuf, <L::Output as Source>::Output)>,
         data: A::DataManager,
     ) -> Self {
         Self {
@@ -152,8 +152,8 @@ impl<A, L> Manager<A, L> where A: Asset<L>, L: Loader  {
             None => {
                 if let Some( handle)= self.asset_handles.get_mut(path.as_ref()) {
                     if handle.status.eq(&LoadStatus::Loading){
-                    while let Ok((p, b)) = self.load_recv.recv() {
-                        if let Ok(a) = A::decode(b,&handle.data, &self.data) {
+                    while let Ok((p, out)) = self.load_recv.recv() {
+                        if let Ok(a) = A::decode(out,&handle.data, &self.data) {
                                 handle.set(a);
                                 self.loaded_once.push(path.as_ref().into());
                                 if p.eq(path.as_ref()) {

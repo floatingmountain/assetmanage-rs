@@ -3,7 +3,7 @@ use crate::{
     Asset, Manager,
 };
 use std::{path::PathBuf, sync::mpsc::{channel,Receiver, Sender}, marker::PhantomData};
-
+use crate::sources::Source;
 /// Builder is used to Build Managers with a loading backend.
 /// construct a Builder, create Managers and finish by returning a loader.
 #[allow(unused)]
@@ -13,7 +13,7 @@ where
 {
     to_load_send: Sender<(usize,PathBuf)>,
     to_load_recv: Receiver<(usize,PathBuf)>,
-    loaded: Vec<Sender<(PathBuf, L::Return)>>,
+    loaded: Vec<Sender<(PathBuf, <<L as Loader>::Output as Source>::Output)>>,
     _phantom: PhantomData<L>
 }
 
