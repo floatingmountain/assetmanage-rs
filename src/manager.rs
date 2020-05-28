@@ -1,35 +1,39 @@
 use crate::{
     asset::{Asset, AssetHandle},
-    loader::{LoadStatus},
+    loaders::{LoadStatus, Loader},
 };
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::{Receiver, Sender};
+use std::sync::mpsc::Receiver;
 use std::{collections::HashMap, error::Error, io::ErrorKind, sync::Arc};
-
+use futures::channel::mpsc::UnboundedSender;
 /// Manages the loading and unloading of one struct that implements the Asset trait.
 /// Regular calls to maintain support lazy loading, auto unload(optional default:off) and auto drop(optional default:off).
-pub struct Manager<A: Asset> {
+pub struct Manager<A, L>
+where 
+A: Asset<L>,
+L: Loader 
+{
     drop: bool,
     unload: bool,
     loader_id: usize,
-    load_send: Sender<(usize,PathBuf)>,
-    load_recv: Receiver<(PathBuf, Vec<u8>)>,
-    asset_handles: HashMap<PathBuf, AssetHandle<A>>,
+    load_send: UnboundedSender<(usize,PathBuf)>,
+    load_recv: Receiver<(PathBuf, L::Return)>,
+    asset_handles: HashMap<PathBuf, AssetHandle<A, L>>,
     loaded_once: Vec<PathBuf>,
     data: A::DataManager,
 }
 
-unsafe impl<A: Asset> Sync for Manager<A> {} //channels are unsafe to send but are only used internally.
+unsafe impl<A, L> Sync for Manager<A, L> where A: Asset<L>, L: Loader  {} //channels are unsafe to send but are only used internally.
 
-impl<A: Asset> Manager<A> {
+impl<A, L> Manager<A, L> where A: Asset<L>, L: Loader  {
     /// Construct a new, empty `Manager`.
     ///
     /// The function does not allocate and the returned Managers main storage will have no
     /// capacity until `insert` is called.
     pub(crate) fn new(
         loader_id: usize,
-        load_send: Sender<(usize,PathBuf)>,
-        load_recv: Receiver<(PathBuf, Vec<u8>)>,
+        load_send: UnboundedSender<(usize,PathBuf)>,
+        load_recv: Receiver<(PathBuf, L::Return)>,
         data: A::DataManager,
     ) -> Self {
         Self {
@@ -109,7 +113,7 @@ impl<A: Asset> Manager<A> {
         a.status = LoadStatus::Loading;
         Ok(self
             .load_send
-            .send((self.loader_id, path.as_ref().into()))?)
+            .unbounded_send((self.loader_id, path.as_ref().into()))?)
     }
     /// Unloads an Asset known to the the Manager. The Asset can be reloaded with the same key.
     ///
@@ -216,7 +220,7 @@ impl<A: Asset> Manager<A> {
     }
 }
 
-impl<A: Asset> Iterator for Manager<A> {
+impl<A, L>  Iterator for Manager<A, L> where A: Asset<L>, L: Loader  {
     type Item = Option<Arc<A::Output>>;
     fn next(&mut self) -> Option<Self::Item> {
         self.asset_handles

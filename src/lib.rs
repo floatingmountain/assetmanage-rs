@@ -1,9 +1,10 @@
 mod asset;
 mod builder;
-mod loader;
+mod loaders;
 mod manager;
 pub use asset::Asset;
 pub use builder::Builder;
 pub use manager::Manager;
+pub use loaders::*;
 #[cfg(test)]
 mod tests;

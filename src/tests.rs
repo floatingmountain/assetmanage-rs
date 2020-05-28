@@ -1,5 +1,5 @@
 use super::*;
-use loader::LoadStatus;
+use loaders::{MemoryLoader, LoadStatus};
 use serde::Deserialize;
 use std::{io::ErrorKind, time::Duration};
 
@@ -9,8 +9,8 @@ struct TestStruct {
     _s: String,
 }
 
-impl Asset for TestStruct {
-    fn decode(b: &[u8], _:&Self::DataAsset,_:&Self::DataManager,) -> Result<Self, std::io::Error> {
+impl Asset<MemoryLoader> for TestStruct {
+    fn decode(b: &Vec<u8>, _:&Self::DataAsset,_:&Self::DataManager,) -> Result<Self, std::io::Error> {
         ron::de::from_bytes::<TestStruct>(&b)
             .map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))
     }
@@ -25,7 +25,7 @@ fn it_works() {
     let path1 = std::env::current_dir()
         .unwrap()
         .join("assets/TestAsset.ron");
-    let path_to_testfilecopy = std::env::current_dir()
+    let _path_to_testfilecopy = std::env::current_dir()
         .unwrap()
         .join("assets/TestAssetCopy.ron");
     let mut builder = builder::Builder::new();
