@@ -1,10 +1,9 @@
-
 use super::Source;
 use std::{io::Read, path::PathBuf};
 
 pub type DiskSource = ();
 
-impl Source for DiskSource{
+impl Source for DiskSource {
     type Input = PathBuf;
     type Output = Vec<u8>;
     fn load(path: Self::Input) -> Result<Self::Output, Box<dyn std::error::Error>> {

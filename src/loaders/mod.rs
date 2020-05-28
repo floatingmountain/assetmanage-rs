@@ -1,7 +1,10 @@
 mod memory_loader;
-pub use memory_loader::MemoryLoader;
-use std::{path::PathBuf, sync::mpsc:: {Sender,Receiver}};
 use crate::sources::Source;
+pub use memory_loader::MemoryLoader;
+use std::{
+    path::PathBuf,
+    sync::mpsc::{Receiver, Sender},
+};
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub enum LoadStatus {
     NotLoaded,
@@ -9,7 +12,7 @@ pub enum LoadStatus {
     Loaded,
 }
 
-pub trait Loader{
+pub trait Loader {
     type Output: Source;
     fn new(
         to_load: Receiver<(usize, PathBuf)>,

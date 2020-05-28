@@ -1,15 +1,22 @@
-use crate::{sources::Source, loaders::{Loader, LoadStatus}};
+use crate::{
+    loaders::{LoadStatus, Loader},
+    sources::Source,
+};
 use std::{path::PathBuf, sync::Arc};
 
 /// Any struct implementing the `Asset` trait can be Stored inside a corresponding `Manager`
 pub trait Asset<L>
-where 
-    L: Loader
+where
+    L: Loader,
 {
     type DataManager;
     type DataAsset;
     type Output;
-    fn decode(bytes: <L::Output as Source>::Output , data_ass: &Self::DataAsset, data_mgr: &Self::DataManager) -> Result<Self::Output, std::io::Error>;
+    fn decode(
+        bytes: <L::Output as Source>::Output,
+        data_ass: &Self::DataAsset,
+        data_mgr: &Self::DataManager,
+    ) -> Result<Self::Output, std::io::Error>;
 }
 
 /// `AssetHandle` holds the Asset and its Metadata
@@ -26,10 +33,11 @@ where
 }
 
 impl<A, L> AssetHandle<A, L>
-where A: Asset<L> ,
-L: Loader,
+where
+    A: Asset<L>,
+    L: Loader,
 {
-    pub(crate) fn new(path: PathBuf, data:A::DataAsset) -> Self {
+    pub(crate) fn new(path: PathBuf, data: A::DataAsset) -> Self {
         Self {
             path,
             asset: None,

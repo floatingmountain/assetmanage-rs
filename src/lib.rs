@@ -5,7 +5,7 @@ mod manager;
 mod sources;
 pub use asset::Asset;
 pub use builder::Builder;
-pub use manager::Manager;
 pub use loaders::*;
+pub use manager::Manager;
 #[cfg(test)]
 mod tests;
