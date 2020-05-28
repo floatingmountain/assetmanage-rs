@@ -3,7 +3,6 @@ use crate::{
     Loader,
 };
 use futures::stream::{FuturesUnordered, StreamExt};
-use std::io::Read;
 use std::{
     path::PathBuf,
     sync::mpsc::{Receiver, Sender},
