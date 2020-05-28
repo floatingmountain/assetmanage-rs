@@ -99,7 +99,7 @@ where
     /// If auto_dropout is activated the Asset has to be explicitly loaded with the given key after inserting
     /// or it will be dropped in the next call to maintain.
     ///
-    pub fn insert_raw<P: AsRef<Path>>(&mut self, path: P, asset: A::Output, data: A::DataAsset) {
+    pub fn insert_raw<P: AsRef<Path>>(&mut self, path: P, asset: A::Structure, data: A::DataAsset) {
         let path: PathBuf = path.as_ref().into();
         let mut handle = AssetHandle::new(path.clone(), data);
         handle.set(asset);
@@ -153,7 +153,7 @@ where
     /// If the Asset is not loaded it will return None.
     /// Call status() to get detailed information.
     ///
-    pub fn get<P: AsRef<Path>>(&self, path: P) -> Option<Arc<A::Output>> {
+    pub fn get<P: AsRef<Path>>(&self, path: P) -> Option<Arc<A::Structure>> {
         Some(self.asset_handles.get(path.as_ref())?.get()?.clone())
     }
     /// Returns an Asset known to the the Manager.
@@ -162,13 +162,13 @@ where
     /// If the Asset is not loading it will return None.
     /// Will wait for the Asset to become available on the receiver and then returning it.
     ///
-    pub fn get_blocking<P: AsRef<Path>>(&mut self, path: P) -> Option<Arc<A::Output>> {
+    pub fn get_blocking<P: AsRef<Path>>(&mut self, path: P) -> Option<Arc<A::Structure>> {
         match self.asset_handles.get(path.as_ref())?.get() {
             None => {
                 if let Some(handle) = self.asset_handles.get_mut(path.as_ref()) {
                     if handle.status.eq(&LoadStatus::Loading) {
                         while let Ok((p, out)) = self.load_recv.recv() {
-                            if let Ok(a) = A::decode(out, &handle.data, &self.data) {
+                            if let Ok(a) = A::construct(out, &handle.data, &self.data) {
                                 handle.set(a);
                                 self.loaded_once.push(path.as_ref().into());
                                 if p.eq(path.as_ref()) {
@@ -223,7 +223,7 @@ where
         }
         for (p, b) in self.load_recv.try_iter() {
             if let Some(handle) = self.asset_handles.get_mut(p.as_path()) {
-                if let Ok(a) = A::decode(b, &handle.data, &self.data) {
+                if let Ok(a) = A::construct(b, &handle.data, &self.data) {
                     handle.set(a);
                     self.loaded_once.push(p);
                 }
@@ -242,7 +242,7 @@ where
     A: Asset<L>,
     L: Loader,
 {
-    type Item = Option<Arc<A::Output>>;
+    type Item = Option<Arc<A::Structure>>;
     fn next(&mut self) -> Option<Self::Item> {
         self.asset_handles
             .iter()

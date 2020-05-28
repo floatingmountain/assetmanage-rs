@@ -11,12 +11,12 @@ where
 {
     type DataManager;
     type DataAsset;
-    type Output;
-    fn decode(
-        bytes: <L::Source as Source>::Output,
+    type Structure;
+    fn construct(
+        data_load: <L::Source as Source>::Output,
         data_ass: &Self::DataAsset,
         data_mgr: &Self::DataManager,
-    ) -> Result<Self::Output, std::io::Error>;
+    ) -> Result<Self::Structure, std::io::Error>;
 }
 
 /// `AssetHandle` holds the Asset and its Metadata
@@ -27,7 +27,7 @@ where
     L: Loader,
 {
     pub(crate) path: PathBuf,
-    asset: Option<Arc<A::Output>>,
+    asset: Option<Arc<A::Structure>>,
     pub status: LoadStatus,
     pub data: A::DataAsset,
 }
@@ -49,11 +49,11 @@ where
         self.asset = None;
         self.status = LoadStatus::NotLoaded;
     }
-    pub(crate) fn set(&mut self, a: A::Output) {
+    pub(crate) fn set(&mut self, a: A::Structure) {
         self.asset = Some(Arc::new(a));
         self.status = LoadStatus::Loaded;
     }
-    pub(crate) fn get(&self) -> Option<&Arc<A::Output>> {
+    pub(crate) fn get(&self) -> Option<&Arc<A::Structure>> {
         self.asset.as_ref()
     }
 }
