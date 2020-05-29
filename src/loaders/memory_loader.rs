@@ -9,17 +9,18 @@ use std::{
 };
 ///MemoryLoader recieves assets to load from the associated Managers, then loads and returns them asynchronous.
 pub struct MemoryLoader {
-    to_load: Receiver<(usize, PathBuf)>,
+    to_load: Receiver<(usize, PathBuf, <Self as Loader>::TransferSupplement)>,
     loaded: Vec<Sender<(PathBuf, Vec<u8>)>>,
 }
 
 impl super::Loader for MemoryLoader {
     type Source = DiskSource;
-    type Supplement = ();
+    type TransferSupplement = ();
+    type LoaderSupplement = ();
     fn new(
-        to_load: Receiver<(usize, PathBuf)>,
+        to_load: Receiver<(usize, PathBuf, Self::TransferSupplement)>,
         loaded: Vec<Sender<(PathBuf, <Self::Source as Source>::Output)>>,
-        _: Self::Supplement,
+        _: Self::LoaderSupplement,
     ) -> Self {
         Self { to_load, loaded }
     }
@@ -28,7 +29,7 @@ impl super::Loader for MemoryLoader {
 impl MemoryLoader {
     #[allow(unused)]
     pub(crate) fn new(
-        to_load: Receiver<(usize, PathBuf)>,
+        to_load: Receiver<(usize, PathBuf, <Self as Loader>::TransferSupplement)>,
         loaded: Vec<Sender<(PathBuf, Vec<u8>)>>,
     ) -> Self {
         Self { to_load, loaded }
@@ -38,7 +39,7 @@ impl MemoryLoader {
     pub async fn run(mut self) {
         let mut loading = FuturesUnordered::new();
         loop {
-            self.to_load.try_iter().for_each(|(id, p)| {
+            self.to_load.try_iter().for_each(|(id, p, supp)| {
                 loading.push(async move {
                     (id, p.clone(), <<Self as Loader>::Source as Source>::load(p))
                 })

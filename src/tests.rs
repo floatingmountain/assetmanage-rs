@@ -52,7 +52,7 @@ fn it_works() {
         //default demonstration
         manager1.insert(&path1, ());
         assert!(manager1.status(&path1).eq(&Some(LoadStatus::NotLoaded))); //Asset not loaded
-        manager1.load(&path1).unwrap();
+        manager1.load(&path1,()).unwrap();
         assert!(manager1.status(&path1).eq(&Some(LoadStatus::Loading))); //Asset still not loaded but is loading
         std::thread::sleep(Duration::from_millis(50)); //wait for load
         manager1.maintain(); //Asset is fetched from Loader during maintain
@@ -66,7 +66,7 @@ fn it_works() {
     {
         //auto-unload demonstration
         manager2.insert(&path1, ());
-        manager2.load(&path1).unwrap();
+        manager2.load(&path1,()).unwrap();
         std::thread::sleep(Duration::from_millis(50));
         manager2.maintain();
         {
@@ -77,17 +77,17 @@ fn it_works() {
         manager2.maintain(); //Asset will be dropped during this maintain
         assert!(manager2.status(&path1).eq(&Some(LoadStatus::NotLoaded))); //Asset has been automatically unloaded
         assert!(manager2.get(&path1).is_none()); //Asset cannot be retrieved
-        manager2.load(&path1).unwrap(); //Asset can still be reloaded with the same key
+        manager2.load(&path1,()).unwrap(); //Asset can still be reloaded with the same key
         drop(manager2);
     }
     {
         //auto-dropout demonstration
         manager3.insert(&path1, ());
         manager3.maintain(); //Assethandle will be dropped during this maintain. Cant be loaded afterwards.
-        assert!(manager3.load(&path1).is_err()); //Cant be loaded
+        assert!(manager3.load(&path1,()).is_err()); //Cant be loaded
         assert!(manager3.status(&path1).eq(&None)); //Asset not loaded
         manager3.insert(&path1, ());
-        manager3.load(&path1).unwrap();
+        manager3.load(&path1,()).unwrap();
         manager3.maintain();
         std::thread::sleep(Duration::from_millis(50)); //wait for load
         assert!(manager3.status(&path1).eq(&Some(LoadStatus::Loading))); //Asset wont be dropped while it is loading
@@ -101,14 +101,14 @@ fn it_works() {
     {
         //auto-dropout + auto-unload demonstration
         manager4.insert(&path1, ());
-        manager4.load(&path1).unwrap();
+        manager4.load(&path1,()).unwrap();
         std::thread::sleep(Duration::from_millis(50)); //wait for load
         manager4.maintain();
         {
             let _val = manager4.get(&path1).unwrap(); //Asset is loaded
         } // _val is dropped here
         manager4.maintain(); //Asset is dropped here because noone holds a ref.
-        assert!(manager4.load(&path1).is_err()); //Asset cant be reloaded, because the key has been dropped when there was no remaining ref to it.
+        assert!(manager4.load(&path1,()).is_err()); //Asset cant be reloaded, because the key has been dropped when there was no remaining ref to it.
         drop(manager4);
     }
 }
@@ -128,8 +128,8 @@ fn test_load_get() {
 
     manager.insert(&path, ());
     manager.insert(&path2, ());
-    manager.load(&path).unwrap();
-    manager.load(&path2).unwrap();
+    manager.load(&path,()).unwrap();
+    manager.load(&path2,()).unwrap();
     let s1 = manager.get_blocking(&path).unwrap();
     let s2 = manager.get_blocking(&path2).unwrap();
     assert!(s1._s.eq(&String::from("12341234")));

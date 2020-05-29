@@ -3,7 +3,7 @@ use crate::{loaders::Loader, Asset, Manager};
 use std::{
     marker::PhantomData,
     path::PathBuf,
-    sync::mpsc::{channel, Receiver, Sender},
+    sync::{mpsc::{channel, Receiver, Sender}},
 };
 /// Builder is used to Build Managers with a loading backend.
 /// construct a Builder, create Managers and finish by returning a loader.
@@ -12,8 +12,8 @@ pub struct Builder<L>
 where
     L: Loader,
 {
-    to_load_send: Sender<(usize, PathBuf)>,
-    to_load_recv: Receiver<(usize, PathBuf)>,
+    to_load_send: Sender<(usize, PathBuf, L::TransferSupplement)>,
+    to_load_recv: Receiver<(usize, PathBuf, L::TransferSupplement)>,
     loaded: Vec<Sender<(PathBuf, <<L as Loader>::Source as Source>::Output)>>,
     _phantom: PhantomData<L>,
 }
@@ -41,7 +41,7 @@ impl<L: Loader> Builder<L> {
 
     /// Create the `Loader` associated with `Managers` built by this `Builder`.
     #[allow(unused)]
-    pub fn finish_loader(self, data: L::Supplement) -> L {
+    pub fn finish_loader(self, data: L::LoaderSupplement) -> L {
         L::new(self.to_load_recv, self.loaded, data)
     }
 }

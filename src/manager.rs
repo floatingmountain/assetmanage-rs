@@ -5,7 +5,7 @@ use crate::{
 };
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, Sender};
-use std::{collections::HashMap, error::Error, io::ErrorKind, sync::Arc};
+use std::{collections::HashMap, io::ErrorKind, sync::Arc};
 
 /// Manages the loading and unloading of one struct that implements the Asset trait.
 /// Regular calls to maintain support lazy loading, auto unload(optional default:off) and auto drop(optional default:off).
@@ -17,7 +17,7 @@ where
     drop: bool,
     unload: bool,
     loader_id: usize,
-    load_send: Sender<(usize, PathBuf)>,
+    load_send: Sender<(usize, PathBuf, L::TransferSupplement)>,
     load_recv: Receiver<(PathBuf, <L::Source as Source>::Output)>,
     asset_handles: HashMap<PathBuf, AssetHandle<A, L>>,
     loaded_once: Vec<PathBuf>,
@@ -42,7 +42,7 @@ where
     /// capacity until `insert` is called.
     pub(crate) fn new(
         loader_id: usize,
-        load_send: Sender<(usize, PathBuf)>,
+        load_send: Sender<(usize, PathBuf, L::TransferSupplement)>,
         load_recv: Receiver<(PathBuf, <L::Source as Source>::Output)>,
         data: A::ManagerSupplement,
     ) -> Self {
@@ -111,7 +111,7 @@ where
     /// If there is no valid file found at the specified path it will return an io::Error.
     /// If the key is not found it will return None.
     ///
-    pub fn load<P: AsRef<Path>>(&mut self, path: P) -> Result<(), Box<dyn Error>> {
+    pub fn load<P: AsRef<Path>>(&mut self, path: P, supp: L::TransferSupplement) -> Result<(), std::io::Error> {
         let mut a = self
             .asset_handles
             .get_mut(path.as_ref())
@@ -120,15 +120,20 @@ where
                 format!("Entry not found! {:?}", path.as_ref()),
             ))?;
         if !path.as_ref().exists() {
-            return Err(Box::new(std::io::Error::new(
+            return Err(std::io::Error::new(
                 ErrorKind::NotFound,
                 format!("File not found! {:?}", path.as_ref()),
-            )));
+            ));
         }
         a.status = LoadStatus::Loading;
-        Ok(self
+        let package = (self.loader_id, path.as_ref().into(), supp);
+        self
             .load_send
-            .send((self.loader_id, path.as_ref().into()))?)
+            .send(package)
+            .map_err(|e| std::io::Error::new(
+                ErrorKind::ConnectionReset,
+                format!("Error sending! {:?}", e),
+            ))
     }
     /// Unloads an Asset known to the the Manager. The Asset can be reloaded with the same key.
     ///
@@ -198,10 +203,10 @@ where
     pub fn status<P: AsRef<Path>>(&self, path: P) -> Option<LoadStatus> {
         Some(self.asset_handles.get(path.as_ref())?.status)
     }
-    pub fn data_asset<P: AsRef<Path>>(&self, path: P) -> Option<&A::DataAsset>{
+    pub fn data_asset<P: AsRef<Path>>(&self, path: P) -> Option<&A::AssetSupplement>{
         Some(&self.asset_handles.get(path.as_ref())?.data)
     }
-    pub fn data_manager<P: AsRef<Path>>(&self) -> Option<&A::DataManager>{
+    pub fn data_manager<P: AsRef<Path>>(&self) -> Option<&A::ManagerSupplement>{
         Some(&self.data)
     }
     /// Maintains the manager. Needs to be called for lazy loading, to unload unused Assets and maybe even drop them.

@@ -14,10 +14,11 @@ pub enum LoadStatus {
 
 pub trait Loader {
     type Source: Source;
-    type Supplement;
+    type TransferSupplement: Send + Sync;
+    type LoaderSupplement;
     fn new(
-        to_load: Receiver<(usize, PathBuf)>,
+        to_load: Receiver<(usize, PathBuf, Self::TransferSupplement)>,
         loaded: Vec<Sender<(PathBuf, <Self::Source as Source>::Output)>>,
-        data: Self::Supplement,
+        data: Self::LoaderSupplement,
     ) -> Self;
 }
