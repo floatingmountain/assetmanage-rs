@@ -21,7 +21,7 @@ where
     load_recv: Receiver<(PathBuf, <L::Source as Source>::Output)>,
     asset_handles: HashMap<PathBuf, AssetHandle<A, L>>,
     loaded_once: Vec<PathBuf>,
-    data: A::DataManager,
+    data: A::ManagerSupplement,
 }
 
 unsafe impl<A, L> Sync for Manager<A, L>
@@ -44,7 +44,7 @@ where
         loader_id: usize,
         load_send: Sender<(usize, PathBuf)>,
         load_recv: Receiver<(PathBuf, <L::Source as Source>::Output)>,
-        data: A::DataManager,
+        data: A::ManagerSupplement,
     ) -> Self {
         Self {
             drop: false,
@@ -87,7 +87,7 @@ where
     /// If auto_dropout is activated the Asset has to be explicitly loaded with the given key after inserting
     /// or it will be dropped in the next call to maintain.
     ///
-    pub fn insert<P: AsRef<Path>>(&mut self, path: P, data: A::DataAsset) {
+    pub fn insert<P: AsRef<Path>>(&mut self, path: P, data: A::AssetSupplement) {
         let path: PathBuf = path.as_ref().into();
         self.asset_handles
             .entry(path.clone())
@@ -99,7 +99,7 @@ where
     /// If auto_dropout is activated the Asset has to be explicitly loaded with the given key after inserting
     /// or it will be dropped in the next call to maintain.
     ///
-    pub fn insert_raw<P: AsRef<Path>>(&mut self, path: P, asset: A::Structure, data: A::DataAsset) {
+    pub fn insert_raw<P: AsRef<Path>>(&mut self, path: P, asset: A::Structure, data: A::AssetSupplement) {
         let path: PathBuf = path.as_ref().into();
         let mut handle = AssetHandle::new(path.clone(), data);
         handle.set(asset);

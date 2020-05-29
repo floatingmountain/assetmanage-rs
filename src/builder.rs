@@ -32,7 +32,7 @@ impl<L: Loader> Builder<L> {
     }
     /// Create a new, empty `Manager<A>`.
     #[allow(unused)]
-    pub fn create_manager<A: Asset<L>>(&mut self, data: A::DataManager) -> Manager<A, L> {
+    pub fn create_manager<A: Asset<L>>(&mut self, data: A::ManagerSupplement) -> Manager<A, L> {
         let (s, r) = channel();
         let loader_id = self.loaded.len();
         self.loaded.push(s);
@@ -41,7 +41,7 @@ impl<L: Loader> Builder<L> {
 
     /// Create the `Loader` associated with `Managers` built by this `Builder`.
     #[allow(unused)]
-    pub fn finish_loader(self) -> L {
-        L::new(self.to_load_recv, self.loaded)
+    pub fn finish_loader(self, data: L::Supplement) -> L {
+        L::new(self.to_load_recv, self.loaded, data)
     }
 }

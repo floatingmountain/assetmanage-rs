@@ -15,9 +15,11 @@ pub struct MemoryLoader {
 
 impl super::Loader for MemoryLoader {
     type Source = DiskSource;
+    type Supplement = ();
     fn new(
         to_load: Receiver<(usize, PathBuf)>,
         loaded: Vec<Sender<(PathBuf, <Self::Source as Source>::Output)>>,
+        _: Self::Supplement,
     ) -> Self {
         Self { to_load, loaded }
     }

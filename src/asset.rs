@@ -9,13 +9,13 @@ pub trait Asset<L>
 where
     L: Loader,
 {
-    type DataManager;
-    type DataAsset;
+    type ManagerSupplement;
+    type AssetSupplement;
     type Structure;
     fn construct(
         data_load: <L::Source as Source>::Output,
-        data_ass: &Self::DataAsset,
-        data_mgr: &Self::DataManager,
+        data_ass: &Self::AssetSupplement,
+        data_mgr: &Self::ManagerSupplement,
     ) -> Result<Self::Structure, std::io::Error>;
 }
 
@@ -29,7 +29,7 @@ where
     pub(crate) path: PathBuf,
     asset: Option<Arc<A::Structure>>,
     pub status: LoadStatus,
-    pub data: A::DataAsset,
+    pub data: A::AssetSupplement,
 }
 
 impl<A, L> AssetHandle<A, L>
@@ -37,7 +37,7 @@ where
     A: Asset<L>,
     L: Loader,
 {
-    pub(crate) fn new(path: PathBuf, data: A::DataAsset) -> Self {
+    pub(crate) fn new(path: PathBuf, data: A::AssetSupplement) -> Self {
         Self {
             path,
             asset: None,

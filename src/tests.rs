@@ -10,17 +10,17 @@ struct TestStruct {
 }
 
 impl Asset<MemoryLoader> for TestStruct {
+    type Structure = TestStruct;
+    type AssetSupplement = ();
+    type ManagerSupplement = ();
     fn construct(
         b: Vec<u8>,
-        _: &Self::DataAsset,
-        _: &Self::DataManager,
+        _: &Self::AssetSupplement,
+        _: &Self::ManagerSupplement,
     ) -> Result<Self, std::io::Error> {
         ron::de::from_bytes::<TestStruct>(&b)
             .map_err(|e| std::io::Error::new(ErrorKind::InvalidData, e))
     }
-    type Structure = TestStruct;
-    type DataAsset = ();
-    type DataManager = ();
 }
 
 #[test]
@@ -46,7 +46,7 @@ fn it_works() {
         .auto_unload()
         .auto_dropout();
 
-    let loader = builder.finish_loader();
+    let loader = builder.finish_loader(());
     async_std::task::spawn(loader.run());
     {
         //default demonstration
@@ -123,7 +123,7 @@ fn test_load_get() {
         .join("assets/TestAssetCopy.ron");
     let mut builder = builder::Builder::new();
     let mut manager = builder.create_manager::<TestStruct>(());
-    let loader = builder.finish_loader();
+    let loader = builder.finish_loader(());
     async_std::task::spawn(loader.run());
 
     manager.insert(&path, ());
