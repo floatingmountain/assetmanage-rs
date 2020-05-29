@@ -195,8 +195,14 @@ where
     ///
     /// If the key is not found it will return None.
     ///
-    pub fn status<P: AsRef<Path>>(&mut self, path: P) -> Option<LoadStatus> {
+    pub fn status<P: AsRef<Path>>(&self, path: P) -> Option<LoadStatus> {
         Some(self.asset_handles.get(path.as_ref())?.status)
+    }
+    pub fn data_asset<P: AsRef<Path>>(&self, path: P) -> Option<&A::DataAsset>{
+        Some(&self.asset_handles.get(path.as_ref())?.data)
+    }
+    pub fn data_manager<P: AsRef<Path>>(&self) -> Option<&A::DataManager>{
+        Some(&self.data)
     }
     /// Maintains the manager. Needs to be called for lazy loading, to unload unused Assets and maybe even drop them.
     /// The default Manager will not drop or unload any Assets. So maintain will just load Assets.
