@@ -120,20 +120,26 @@ where
                 format!("Entry not found! {:?}", path.as_ref()),
             ))?;
         if !path.as_ref().exists() {
-            return Err(std::io::Error::new(
+            Err(std::io::Error::new(
                 ErrorKind::NotFound,
                 format!("File not found! {:?}", path.as_ref()),
-            ));
-        }
-        a.status = LoadStatus::Loading;
-        let package = (self.loader_id, path.as_ref().into(), supp);
-        self
-            .load_send
-            .send(package)
-            .map_err(|e| std::io::Error::new(
-                ErrorKind::ConnectionReset,
-                format!("Error sending! {:?}", e),
             ))
+        } else if a.status.eq(&LoadStatus::Loading){
+            Err(std::io::Error::new(
+                ErrorKind::AlreadyExists,
+                format!("File not found! {:?}", path.as_ref()),
+            ))
+        } else {
+            a.status = LoadStatus::Loading;
+            let package = (self.loader_id, path.as_ref().into(), supp);
+            self
+                .load_send
+                .send(package)
+                .map_err(|e| std::io::Error::new(
+                    ErrorKind::ConnectionReset,
+                    format!("Error sending! {:?}", e),
+                ))
+        }
     }
     /// Unloads an Asset known to the the Manager. The Asset can be reloaded with the same key.
     ///
