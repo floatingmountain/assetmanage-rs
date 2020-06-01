@@ -127,7 +127,7 @@ where
         } else if a.status.eq(&LoadStatus::Loading){
             Err(std::io::Error::new(
                 ErrorKind::AlreadyExists,
-                format!("File not found! {:?}", path.as_ref()),
+                format!("Image already loading! {:?}", path.as_ref()),
             ))
         } else {
             a.status = LoadStatus::Loading;
